@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:17.10-alpine
+    restart: always
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    # or set shared memory limit when deploy via swarm stack
+    #volumes:
+    #  - type: tmpfs
+    #    target: /dev/shm
+    #    tmpfs:
+    #      size: 134217728 # 128*2^20 bytes = 128Mb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - db:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+  app:
+    build: .
+    ports:
+      - "3003:3000"
+    environment:
+      BASE_URL: "http://localhost:3003"
+      FRONTEND_URL: "http://localhost:5173"
+      DATABASE_URL: "postgres://postgres:postgres@db:5432/postgres"
+    depends_on:
+      - db
+
+  # pgadmin:
+  #   image: dpage/pgadmin4:9.15
+  #   restart: always
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@example.com
+  #     PGADMIN_DEFAULT_PASSWORD: admin
+  #   volumes:
+  #     - pgadmin:/var/lib/pgadmin
+  #   #   - ./data/pgadmin/pgadmin4:/pgadmin4
+  #   ports:
+  #     - 4080:80
+
+  # adminer:
+  #   image: adminer
+  #   restart: always
+  #   ports:
+  #     - 8081:8080
+
+volumes:
+  db:
+  # pgadmin:
+# networks:
+#   pgadmin:
+#     external: true
