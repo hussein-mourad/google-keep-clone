@@ -9,6 +9,17 @@ export async function getNotes(req: Request, res: Response) {
 export async function createNote(req: Request, res: Response) {
   try {
     const note = req.body;
+    const { title, content } = note;
+    if (!title) {
+      return res.status(400).json({
+        message: "Title is required",
+      });
+    }
+    if (!content) {
+      return res.status(400).json({
+        message: "Content is required",
+      });
+    }
     const createdNote = await service.createNote(note);
     res.json(createdNote);
   } catch (error) {
