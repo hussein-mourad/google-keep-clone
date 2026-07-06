@@ -2,8 +2,12 @@ import type { Request, Response } from "express";
 import * as service from "./service";
 
 export async function getNotes(req: Request, res: Response) {
-  const notes = await service.getNotes();
-  res.json(notes);
+  try {
+    const notes = await service.getNotes();
+    res.json(notes);
+  } catch (error) {
+    return res.status(404).json({ error: "Failed to get notes" });
+  }
 }
 
 export async function createNote(req: Request, res: Response) {
