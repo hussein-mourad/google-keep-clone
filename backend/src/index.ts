@@ -7,7 +7,7 @@ import { FRONTEND_URL, PORT } from "./env";
 import notesRouter from "./features/notes/router";
 // import path from "path";
 
-const app = express();
+export const app = express();
 
 app.use(logger("dev"));
 app.use(express.json());

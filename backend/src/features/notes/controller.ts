@@ -6,7 +6,7 @@ export async function getNotes(req: Request, res: Response) {
     const notes = await service.getNotes();
     res.json(notes);
   } catch (error) {
-    return res.status(404).json({ error: "Failed to get notes" });
+    return res.status(500).json({ error: error });
   }
 }
 
