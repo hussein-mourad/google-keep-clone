@@ -1,11 +1,13 @@
 import express from "express";
+import type { Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 import cors from "cors";
 import notesRouter from "@/features/notes/router";
 import env from "@/lib/env";
-import { toNodeHandler } from "better-auth/node";
+import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import { auth } from "@/lib/auth";
+import { requireAuth } from "./features/auth/middleware";
 
 const app = express();
 
@@ -30,7 +32,17 @@ app.use(
 //   res.render("index");
 // });
 
+app.get("/api/auth/me", async (req: Request, res: Response) => {
+  const result = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+  if (!result) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  return res.json(result.user);
+});
 app.all("/api/auth/{*any}", toNodeHandler(auth));
+app.use(requireAuth);
 app.use("/api/notes", notesRouter);
 
 export default app;

@@ -3,7 +3,7 @@ import z from "zod";
 export const envSchema = z.object({
   PORT: z.string().optional().default("8000"),
   BASE_URL: z.string().optional(),
-  FRONTEND_URL: z.string().optional(),
+  FRONTEND_URL: z.string(),
   DATABASE_URL: z.string(),
 
   BETTER_AUTH_SECRET: z.string(),
@@ -28,7 +28,13 @@ export function validateEnv(config: Record<string, any>) {
 
 const env = validateEnv(process.env);
 
-export type EnvConfig = z.infer<typeof envSchema>;
-export type EnvKeys = keyof EnvConfig;
+export type Env = z.infer<typeof envSchema>;
+export type EnvKeys = keyof Env;
 
 export default env;
+
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv extends Env { }
+  }
+}
