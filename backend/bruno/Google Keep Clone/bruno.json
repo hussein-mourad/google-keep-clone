@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Google Keep Clone",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
