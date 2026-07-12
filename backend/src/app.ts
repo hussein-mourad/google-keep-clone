@@ -2,9 +2,10 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 import cors from "cors";
-import { FRONTEND_URL } from "@/lib/env";
 import notesRouter from "@/features/notes/router";
-import authRouter from "@/features/auth/router";
+import env from "@/lib/env";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "@/lib/auth";
 
 const app = express();
 
@@ -16,7 +17,8 @@ app.disable("etag").disable("x-powered-by");
 
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: env.FRONTEND_URL,
+    credentials: true,
   }),
 );
 
@@ -28,7 +30,7 @@ app.use(
 //   res.render("index");
 // });
 
-app.use("/auth", authRouter);
-app.use("/notes", notesRouter);
+app.all("/api/auth/{*any}", toNodeHandler(auth));
+app.use("/api/notes", notesRouter);
 
 export default app;
