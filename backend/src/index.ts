@@ -1,38 +1,9 @@
 import "dotenv/config";
-import express from "express";
-import cookieParser from "cookie-parser";
-import logger from "morgan";
-import cors from "cors";
-import { FRONTEND_URL, PORT } from "./env";
-import notesRouter from "./features/notes/router";
-// import path from "path";
+import app from "@/app";
+import env from "@/lib/env";
 
-const app = express();
-
-app.use(logger("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.disable("etag").disable("x-powered-by");
-
-app.use(
-  cors({
-    origin: FRONTEND_URL,
-  }),
-);
-
-// app.use("/static", express.static(path.join(process.cwd(), "public")));
-// app.set("view engine", "ejs");
-// app.set("views", path.join(process.cwd(), "views"));
-
-// app.get("/", (_, res) => {
-//   res.render("index");
-// });
-
-app.use("/notes", notesRouter);
-
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(env.PORT, () => {
+  console.log(`Server running on port ${env.PORT}`);
 });
 
 server.on("error", (err) => {
