@@ -1,0 +1,19 @@
+{
+  "name": "google-keep-clone",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter './apps/*' dev",
+    "build": "bun run --filter './apps/*' build",
+    "test": "bun test --filter './apps/*'",
+    "clean": "rm -rf 'apps/*/node_modules' 'packages/*/dist' 'packages/*/.bun'",
+    "dev:backend": "bun run --filter backend dev",
+    "dev:frontend": "bun run --filter frontend dev"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
