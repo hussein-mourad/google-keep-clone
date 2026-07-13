@@ -4,12 +4,16 @@ import { useEffect, useState } from "react";
 import { authClient } from "#/lib/auth-client";
 import { ProtectedRoute } from "#/components/protected-route";
 import { ModeToggle } from "#/components/theme/toggle";
+import { Avatar, AvatarFallback, AvatarImage } from "#/components/ui/avatar";
 import { Button } from "#/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuTrigger,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 } from "#/components/ui/dropdown-menu";
 import {
 	createNote,
@@ -30,6 +34,7 @@ export const Route = createFileRoute("/notes")({
 
 function RouteComponent() {
 	const navigate = useNavigate();
+	const { data: session } = authClient.useSession();
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [createOpen, setCreateOpen] = useState(false);
@@ -98,6 +103,7 @@ function RouteComponent() {
 	}
 
 	const activeLabel = labels.find((l) => l.id === filterLabelId);
+	const user = session?.user;
 
 	return (
 		<ProtectedRoute>
@@ -141,9 +147,35 @@ function RouteComponent() {
 							<PlusIcon className="size-4" />
 							New Note
 						</Button>
-						<Button variant="outline" size="icon" onClick={handleSignOut}>
-							<LogOutIcon className="size-4" />
-						</Button>
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								render={
+									<Button variant="ghost" size="icon" className="rounded-full">
+										<Avatar>
+											<AvatarImage src={user?.image ?? undefined} alt={user?.name ?? ""} />
+											<AvatarFallback>{(user?.name ?? "U").charAt(0).toUpperCase()}</AvatarFallback>
+										</Avatar>
+									</Button>
+								}
+							/>
+							<DropdownMenuContent align="end" className="min-w-48">
+								<DropdownMenuGroup>
+									<DropdownMenuLabel className="font-normal">
+										<div className="flex flex-col gap-0.5">
+											<p className="text-sm font-medium">{user?.name}</p>
+											<p className="text-xs text-muted-foreground">
+												{user?.email}
+											</p>
+										</div>
+									</DropdownMenuLabel>
+								</DropdownMenuGroup>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem onClick={handleSignOut}>
+									<LogOutIcon className="size-4" />
+									Sign out
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 						<ModeToggle />
 					</div>
 				</header>
