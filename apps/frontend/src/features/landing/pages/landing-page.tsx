@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AuthForm } from "#/components/auth-form";
 import { ModeToggle } from "#/components/theme/toggle";
 import { authClient } from "#/lib/auth-client";

@@ -11,10 +11,7 @@ export async function createLabel(name: string): Promise<Label> {
 	return data;
 }
 
-export async function updateLabel(
-	id: number,
-	name: string,
-): Promise<Label> {
+export async function updateLabel(id: number, name: string): Promise<Label> {
 	const { data } = await api.put(`/api/labels/${id}`, { name });
 	return data;
 }

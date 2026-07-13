@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
-import { authClient } from "#/lib/auth-client";
+import { getLabels } from "#/features/labels/api";
+import type { Label } from "#/features/labels/types";
 import {
 	createNote,
 	deleteNote,
 	getNotes,
 	updateNote,
 } from "#/features/notes/api";
-import { getLabels } from "#/features/labels/api";
-import type { Label } from "#/features/labels/types";
 import type { Note } from "#/features/notes/types";
-import { NotesHeader } from "../components/notes-header";
-import { NotesGrid } from "../components/notes-grid";
+import { authClient } from "#/lib/auth-client";
 import { CreateNoteDialog } from "../components/create-note-dialog";
 import { EditNoteDialog } from "../components/edit-note-dialog";
+import { NotesGrid } from "../components/notes-grid";
+import { NotesHeader } from "../components/notes-header";
 
 export function NotesPage() {
 	const { data: session } = authClient.useSession();

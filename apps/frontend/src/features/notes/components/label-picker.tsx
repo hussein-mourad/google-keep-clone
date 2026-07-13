@@ -1,14 +1,10 @@
-import { useEffect, useState } from "react";
 import { PlusIcon, XIcon } from "lucide-react";
-import type { Label } from "#/features/labels/types";
-import {
-	getLabels,
-	createLabel,
-	deleteLabel,
-} from "#/features/labels/api";
+import { useEffect, useState } from "react";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
+import { createLabel, deleteLabel, getLabels } from "#/features/labels/api";
+import type { Label } from "#/features/labels/types";
 
 interface LabelPickerProps {
 	selectedIds: number[];
@@ -21,7 +17,9 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
 	const [creating, setCreating] = useState(false);
 
 	useEffect(() => {
-		getLabels().then(setLabels).catch(() => {});
+		getLabels()
+			.then(setLabels)
+			.catch(() => {});
 	}, []);
 
 	async function handleCreate() {
@@ -60,9 +58,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
 					{labels.map((label) => (
 						<Badge
 							key={label.id}
-							variant={
-								selectedIds.includes(label.id) ? "default" : "outline"
-							}
+							variant={selectedIds.includes(label.id) ? "default" : "outline"}
 							className="cursor-pointer"
 							onClick={() => toggleLabel(label.id)}
 						>

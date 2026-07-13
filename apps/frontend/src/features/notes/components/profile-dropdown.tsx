@@ -1,5 +1,5 @@
-import { LogOutIcon } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { LogOutIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "#/components/ui/avatar";
 import { Button } from "#/components/ui/button";
 import {
@@ -35,8 +35,13 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
 				render={
 					<Button variant="ghost" size="icon" className="rounded-full">
 						<Avatar>
-							<AvatarImage src={user?.image ?? undefined} alt={user?.name ?? ""} />
-							<AvatarFallback>{(user?.name ?? "U").charAt(0).toUpperCase()}</AvatarFallback>
+							<AvatarImage
+								src={user?.image ?? undefined}
+								alt={user?.name ?? ""}
+							/>
+							<AvatarFallback>
+								{(user?.name ?? "U").charAt(0).toUpperCase()}
+							</AvatarFallback>
 						</Avatar>
 					</Button>
 				}
@@ -46,9 +51,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
 					<DropdownMenuLabel className="font-normal">
 						<div className="flex flex-col gap-0.5">
 							<p className="text-sm font-medium">{user?.name}</p>
-							<p className="text-xs text-muted-foreground">
-								{user?.email}
-							</p>
+							<p className="text-xs text-muted-foreground">{user?.email}</p>
 						</div>
 					</DropdownMenuLabel>
 				</DropdownMenuGroup>

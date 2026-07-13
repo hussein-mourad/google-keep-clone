@@ -1,9 +1,9 @@
 import { PlusIcon } from "lucide-react";
 import { ModeToggle } from "#/components/theme/toggle";
 import { Button } from "#/components/ui/button";
+import type { Label } from "#/features/labels/types";
 import { FilterDropdown } from "./filter-dropdown";
 import { ProfileDropdown } from "./profile-dropdown";
-import type { Label } from "#/features/labels/types";
 
 interface NotesHeaderProps {
 	labels: Label[];

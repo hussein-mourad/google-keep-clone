@@ -14,7 +14,11 @@ interface FilterDropdownProps {
 	onChange: (labelId: number | undefined) => void;
 }
 
-export function FilterDropdown({ labels, activeLabelId, onChange }: FilterDropdownProps) {
+export function FilterDropdown({
+	labels,
+	activeLabelId,
+	onChange,
+}: FilterDropdownProps) {
 	const activeLabel = labels.find((l) => l.id === activeLabelId);
 
 	return (
@@ -42,10 +46,7 @@ export function FilterDropdown({ labels, activeLabelId, onChange }: FilterDropdo
 						All notes
 					</DropdownMenuItem>
 					{labels.map((label) => (
-						<DropdownMenuItem
-							key={label.id}
-							onClick={() => onChange(label.id)}
-						>
+						<DropdownMenuItem key={label.id} onClick={() => onChange(label.id)}>
 							{label.name}
 						</DropdownMenuItem>
 					))}
