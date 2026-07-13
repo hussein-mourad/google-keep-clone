@@ -15,6 +15,7 @@
     "dev:frontend": "bun run --filter frontend dev"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "shadcn": "^4.13.0"
   }
 }
