@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PlusIcon } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { LogOutIcon, PlusIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { authClient } from "#/lib/auth-client";
 import { ProtectedRoute } from "#/components/protected-route";
 import { ModeToggle } from "#/components/theme/toggle";
 import { Button } from "#/components/ui/button";
@@ -20,10 +21,16 @@ export const Route = createFileRoute("/notes")({
 });
 
 function RouteComponent() {
+	const navigate = useNavigate();
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+	const handleSignOut = async () => {
+		await authClient.signOut();
+		navigate({ to: "/" });
+	};
 
 	async function loadNotes() {
 		try {
@@ -71,6 +78,9 @@ function RouteComponent() {
 						<Button onClick={() => setCreateOpen(true)}>
 							<PlusIcon className="size-4" />
 							New Note
+						</Button>
+						<Button variant="outline" size="icon" onClick={handleSignOut}>
+							<LogOutIcon className="size-4" />
 						</Button>
 						<ModeToggle />
 					</div>
