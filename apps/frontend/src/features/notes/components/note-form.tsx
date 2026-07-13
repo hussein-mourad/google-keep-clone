@@ -20,11 +20,26 @@ const noteSchema = z.object({
 
 type NoteFormData = z.infer<typeof noteSchema>;
 
+const NOTE_COLORS = [
+	{ name: "Default", value: null },
+	{ name: "Red", value: "#f28b82" },
+	{ name: "Orange", value: "#fbbc04" },
+	{ name: "Yellow", value: "#fff475" },
+	{ name: "Green", value: "#ccff90" },
+	{ name: "Teal", value: "#a7ffeb" },
+	{ name: "Blue", value: "#cbf0f8" },
+	{ name: "Purple", value: "#d7aefb" },
+	{ name: "Pink", value: "#fdcfe8" },
+];
+
 interface NoteFormProps {
 	initialTitle?: string;
 	initialContent?: string;
 	initialLabelIds?: number[];
-	onSubmit: (data: NoteFormData & { labelIds: number[] }) => Promise<void>;
+	initialColor?: string | null;
+	onSubmit: (
+		data: NoteFormData & { labelIds: number[]; color: string | null },
+	) => Promise<void>;
 	onDelete?: () => Promise<void>;
 	submitLabel?: string;
 }
@@ -33,12 +48,16 @@ export function NoteForm({
 	initialTitle = "",
 	initialContent = "",
 	initialLabelIds = [],
+	initialColor = null,
 	onSubmit,
 	onDelete,
 	submitLabel = "Save",
 }: NoteFormProps) {
 	const [selectedLabelIds, setSelectedLabelIds] =
 		useState<number[]>(initialLabelIds);
+	const [selectedColor, setSelectedColor] = useState<string | null>(
+		initialColor,
+	);
 	const {
 		register,
 		handleSubmit,
@@ -51,7 +70,7 @@ export function NoteForm({
 	return (
 		<form
 			onSubmit={handleSubmit((data) =>
-				onSubmit({ ...data, labelIds: selectedLabelIds }),
+				onSubmit({ ...data, labelIds: selectedLabelIds, color: selectedColor }),
 			)}
 		>
 			<DialogHeader>
@@ -83,6 +102,31 @@ export function NoteForm({
 						/>
 					</FieldContent>
 				</Field>
+				<div>
+					<p className="mb-1.5 text-xs text-muted-foreground">Color</p>
+					<div className="flex items-center gap-1.5">
+						{NOTE_COLORS.map((c) => (
+							<button
+								key={c.name}
+								type="button"
+								title={c.name}
+								className={`size-6 rounded-full border-2 transition-all ${
+									selectedColor === c.value
+										? "border-foreground scale-110"
+										: "border-transparent hover:scale-110"
+								}`}
+								style={c.value ? { backgroundColor: c.value } : undefined}
+								onClick={() => setSelectedColor(c.value)}
+							>
+								{!c.value && (
+									<div className="flex h-full items-center justify-center">
+										<div className="size-3 rounded-full border border-dashed border-muted-foreground" />
+									</div>
+								)}
+							</button>
+						))}
+					</div>
+				</div>
 			</div>
 			<DialogFooter showCloseButton={!!onDelete}>
 				{onDelete && (

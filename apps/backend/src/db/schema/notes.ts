@@ -1,4 +1,4 @@
-import { serial, pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { boolean, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { withTimestamps } from "./timestamps";
 
@@ -9,6 +9,12 @@ export const notesTable = pgTable("notes", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+
+  isPinned: boolean("is_pinned").default(false).notNull(),
+  color: varchar("color", { length: 7 }),
+  isArchived: boolean("is_archived").default(false).notNull(),
+  isDeleted: boolean("is_deleted").default(false).notNull(),
+  deletedAt: timestamp("deleted_at"),
 
   ...withTimestamps,
 });

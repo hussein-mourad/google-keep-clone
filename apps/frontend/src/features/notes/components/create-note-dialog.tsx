@@ -8,6 +8,7 @@ interface CreateNoteDialogProps {
 		title: string;
 		content: string;
 		labelIds: number[];
+		color: string | null;
 	}) => Promise<void>;
 }
 

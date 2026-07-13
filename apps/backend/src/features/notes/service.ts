@@ -1,29 +1,49 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { notesTable, type NewNote } from "../../db/schema/notes";
 import { noteLabels, labels } from "../../db/schema/labels";
 
-export async function getNotes(userId: string, labelId?: number) {
+interface GetNotesOptions {
+  labelId?: number;
+  search?: string;
+  archived?: boolean;
+  trash?: boolean;
+}
+
+export async function getNotes(userId: string, opts: GetNotesOptions = {}) {
+  const { labelId, search, archived, trash } = opts;
+
+  const conditions = [eq(notesTable.userId, userId)];
+
+  if (trash) {
+    conditions.push(eq(notesTable.isDeleted, true));
+  } else if (archived) {
+    conditions.push(eq(notesTable.isArchived, true));
+    conditions.push(eq(notesTable.isDeleted, false));
+  } else {
+    conditions.push(eq(notesTable.isArchived, false));
+    conditions.push(eq(notesTable.isDeleted, false));
+  }
+
+  if (search) {
+    conditions.push(
+      sql`(${ilike(notesTable.title, `%${search}%`)} OR ${ilike(notesTable.content, `%${search}%`)})`,
+    );
+  }
+
   if (labelId) {
     const noteIds = db
       .select({ noteId: noteLabels.noteId })
       .from(noteLabels)
       .where(eq(noteLabels.labelId, labelId));
-
-    const notes = await db
-      .select()
-      .from(notesTable)
-      .where(
-        and(inArray(notesTable.id, noteIds), eq(notesTable.userId, userId)),
-      );
-
-    return attachLabels(notes);
+    conditions.push(inArray(notesTable.id, noteIds));
   }
 
   const notes = await db
     .select()
     .from(notesTable)
-    .where(eq(notesTable.userId, userId));
+    .where(and(...conditions))
+    .orderBy(desc(notesTable.isPinned), desc(notesTable.updatedAt));
 
   return attachLabels(notes);
 }
@@ -58,15 +78,20 @@ export async function createNote(
 
 export async function updateNote(
   id: number,
-  title: string,
-  content: string,
   userId: string,
+  data: Partial<{
+    title: string;
+    content: string;
+    isPinned: boolean;
+    color: string | null;
+    isArchived: boolean;
+  }>,
   labelIds?: number[],
 ) {
   return db.transaction(async (tx) => {
     const [result] = await tx
       .update(notesTable)
-      .set({ title, content })
+      .set(data)
       .where(
         and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
       )
@@ -82,14 +107,40 @@ export async function updateNote(
   });
 }
 
-export async function deleteNote(id: number, userId: string) {
+export async function softDeleteNote(id: number, userId: string) {
+  const [result] = await db
+    .update(notesTable)
+    .set({ isDeleted: true, deletedAt: new Date() })
+    .where(
+      and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
+    )
+    .returning();
+  if (!result) throw new Error("Failed to delete note");
+  const noteLabelsResult = await getNoteLabelsById(result.id);
+  return { ...result, labels: noteLabelsResult };
+}
+
+export async function restoreNote(id: number, userId: string) {
+  const [result] = await db
+    .update(notesTable)
+    .set({ isDeleted: false, deletedAt: null })
+    .where(
+      and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
+    )
+    .returning();
+  if (!result) throw new Error("Failed to restore note");
+  const noteLabelsResult = await getNoteLabelsById(result.id);
+  return { ...result, labels: noteLabelsResult };
+}
+
+export async function permanentDeleteNote(id: number, userId: string) {
   const [result] = await db
     .delete(notesTable)
     .where(
       and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
     )
     .returning();
-  if (!result) throw new Error("Failed to delete note");
+  if (!result) throw new Error("Failed to permanently delete note");
   return { ...result, labels: [] };
 }
 

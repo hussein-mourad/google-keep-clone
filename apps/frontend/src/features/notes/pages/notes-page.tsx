@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getLabels } from "#/features/labels/api";
 import type { Label } from "#/features/labels/types";
 import {
 	createNote,
-	deleteNote,
 	getNotes,
+	permanentDeleteNote,
+	restoreNote,
+	trashNote,
 	updateNote,
 } from "#/features/notes/api";
 import type { Note } from "#/features/notes/types";
@@ -22,10 +24,18 @@ export function NotesPage() {
 	const [editingNote, setEditingNote] = useState<Note | null>(null);
 	const [labels, setLabels] = useState<Label[]>([]);
 	const [filterLabelId, setFilterLabelId] = useState<number | undefined>();
+	const [search, setSearch] = useState("");
+	const [view, setView] = useState<"notes" | "archived" | "trash">("notes");
+	const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	async function loadNotes() {
 		try {
-			const data = await getNotes(filterLabelId);
+			const data = await getNotes({
+				labelId: view === "notes" ? filterLabelId : undefined,
+				search: search || undefined,
+				archived: view === "archived",
+				trash: view === "trash",
+			});
 			setNotes(data);
 		} catch {
 			setNotes([]);
@@ -43,20 +53,31 @@ export function NotesPage() {
 		}
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only fetch
+	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
 	useEffect(() => {
 		loadLabels();
 	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reload when filter changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reload when filter/search/view changes
 	useEffect(() => {
-		loadNotes();
-	}, [filterLabelId]);
+		setLoading(true);
+		if (searchTimeout.current) clearTimeout(searchTimeout.current);
+		searchTimeout.current = setTimeout(
+			() => {
+				loadNotes();
+			},
+			search ? 250 : 0,
+		);
+		return () => {
+			if (searchTimeout.current) clearTimeout(searchTimeout.current);
+		};
+	}, [filterLabelId, search, view]);
 
 	async function handleCreate(note: {
 		title: string;
 		content: string;
 		labelIds: number[];
+		color: string | null;
 	}) {
 		await createNote(note);
 		setCreateOpen(false);
@@ -65,7 +86,12 @@ export function NotesPage() {
 
 	async function handleUpdate(
 		id: number,
-		note: { title: string; content: string; labelIds: number[] },
+		note: {
+			title: string;
+			content: string;
+			labelIds: number[];
+			color: string | null;
+		},
 	) {
 		await updateNote(id, note);
 		setEditingNote(null);
@@ -73,8 +99,33 @@ export function NotesPage() {
 	}
 
 	async function handleDelete(id: number) {
-		await deleteNote(id);
+		await trashNote(id);
 		setEditingNote(null);
+		await loadNotes();
+	}
+
+	async function handleTogglePin(note: Note) {
+		await updateNote(note.id, { isPinned: !note.isPinned });
+		await loadNotes();
+	}
+
+	async function handleArchive(note: Note) {
+		await updateNote(note.id, { isArchived: true });
+		await loadNotes();
+	}
+
+	async function handleTrash(note: Note) {
+		await trashNote(note.id);
+		await loadNotes();
+	}
+
+	async function handleRestore(note: Note) {
+		await restoreNote(note.id);
+		await loadNotes();
+	}
+
+	async function handlePermanentDelete(note: Note) {
+		await permanentDeleteNote(note.id);
 		await loadNotes();
 	}
 
@@ -83,9 +134,19 @@ export function NotesPage() {
 			<NotesHeader
 				labels={labels}
 				filterLabelId={filterLabelId}
-				onFilterChange={setFilterLabelId}
+				onFilterChange={(id) => {
+					setFilterLabelId(id);
+					if (id) setView("notes");
+				}}
 				onNewNote={() => setCreateOpen(true)}
 				user={session?.user ?? null}
+				search={search}
+				onSearchChange={setSearch}
+				view={view}
+				onViewChange={(v) => {
+					setView(v);
+					if (v !== "notes") setFilterLabelId(undefined);
+				}}
 			/>
 			<main className="mx-auto max-w-7xl p-4">
 				{loading ? (
@@ -93,7 +154,16 @@ export function NotesPage() {
 						<div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
 					</div>
 				) : (
-					<NotesGrid notes={notes} onNoteClick={setEditingNote} />
+					<NotesGrid
+						notes={notes}
+						onNoteClick={setEditingNote}
+						onTogglePin={handleTogglePin}
+						onArchive={handleArchive}
+						onTrash={handleTrash}
+						onRestore={handleRestore}
+						onPermanentDelete={handlePermanentDelete}
+						view={view}
+					/>
 				)}
 			</main>
 			<CreateNoteDialog
