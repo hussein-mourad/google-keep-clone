@@ -1,4 +1,4 @@
-import { Card, CardContent } from "#/components/ui/card";
+import { Card, CardContent, CardHeader } from "#/components/ui/card";
 import type { Note } from "../types";
 
 interface NoteCardProps {
@@ -12,11 +12,13 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
 
 	return (
 		<Card
-			className="cursor-pointer break-inside-avoid transition-shadow hover:shadow-lg"
+			className="cursor-pointer break-inside-avoid transition-shadow hover:shadow-lg gap-1"
 			onClick={() => onClick(note)}
 		>
-			<CardContent className="pt-(--card-spacing)">
-				<h3 className="mb-1 text-sm font-medium leading-snug">{note.title}</h3>
+			<CardHeader className="pb-0">
+				<h3 className="text-sm font-medium leading-snug">{note.title}</h3>
+			</CardHeader>
+			<CardContent className="pt-1">
 				<p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
 					{preview}
 					{hasMore && "..."}
