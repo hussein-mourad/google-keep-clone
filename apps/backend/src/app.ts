@@ -41,6 +41,11 @@ app.get("/api/auth/me", async (req: Request, res: Response) => {
   }
   return res.json(result.user);
 });
+
+app.get("/api/health", (_, res) => {
+  res.json({ status: "ok" });
+});
+
 app.all("/api/auth/{*any}", toNodeHandler(auth));
 app.use(requireAuth);
 app.use("/api/notes", notesRouter);

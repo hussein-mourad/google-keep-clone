@@ -2,33 +2,40 @@
 
 ## Project Structure
 
-Two separate packages, not a monorepo (no workspace config):
+Bun workspace monorepo (`apps/*`):
 
 ```
-frontend/   Vite + React 19 + TanStack Router (file-based routing)
-backend/    Express 5 + Bun runtime + better-auth + Drizzle ORM (PostgreSQL)
+apps/frontend/   Vite + React 19 + TanStack Router (file-based routing)
+apps/backend/    Express 5 + Bun runtime + better-auth + Drizzle ORM (PostgreSQL)
 ```
 
 Both use ESM (`"type": "module"`).
 
 ## Running
 
-- **Frontend dev:** `bun dev` from `frontend/` — Vite on port 3000
-- **Backend dev:** `bun dev` from `backend/` — Bun with hot reload on port 8000
-- Start backend before frontend (Vite proxies via `VITE_BACKEND_URL`)
+| Command | Dir | What |
+|---|---|---|
+| `bun run dev` | root | Runs both frontend + backend concurrently |
+| `bun run dev:frontend` | root | Frontend only (Vite on port 3000) |
+| `bun run dev:backend` | root | Backend only (Bun hot-reload on port 8000) |
+| `bun run dev` | `apps/frontend/` | Vite dev server (port 3000) |
+| `bun run dev` | `apps/backend/` | Bun hot-reload server (port 8000) |
+
+Start backend before frontend (Vite proxies via `VITE_BACKEND_URL`).
 
 ## Key Commands
 
-| Command               | Dir         | What                                  |
-| --------------------- | ----------- | ------------------------------------- |
-| `bun dev`             | `frontend/` | Vite dev server (port 3000)           |
-| `bun dev`             | `backend/`  | Bun hot-reload server (port 8000)     |
-| `bun db:generate`     | `backend/`  | Generate Drizzle migrations           |
-| `bun db:push`         | `backend/`  | Push schema to DB (dev shortcut)      |
-| `bun test`            | `frontend/` | Vitest                                |
-| `bun test`            | `backend/`  | Vitest                                |
-| `bun check`           | `frontend/` | Biome lint+format                     |
-| `bun generate-routes` | `frontend/` | Regenerate TanStack Router route tree |
+| Command | Dir | What |
+|---|---|---|
+| `bun run dev` | root | Runs both frontend + backend concurrently |
+| `bun run dev:backend` | root | Backend only (port 8000) |
+| `bun run dev:frontend` | root | Frontend only (port 3000) |
+| `bun run db:generate` | `apps/backend/` | Generate Drizzle migrations |
+| `bun run db:push` | `apps/backend/` | Push schema to DB (dev shortcut) |
+| `bun run test` | `apps/frontend/` | Vitest |
+| `bun run test` | `apps/backend/` | Vitest |
+| `bun run check` | `apps/frontend/` | Biome lint+format |
+| `bun run generate-routes` | `apps/frontend/` | Regenerate TanStack Router route tree |
 
 ## Path Aliases
 
@@ -54,15 +61,15 @@ Both use ESM (`"type": "module"`).
 ## Database
 
 - Drizzle ORM with `node-postgres` driver
-- Schema files: `backend/src/db/schema/` — `auth.ts`, `notes.ts`, `users.ts`, `timestamps.ts`
-- Migrations output: `backend/src/db/migrations/`
-- `DATABASE_URL` required in `backend/.env`
+- Schema files: `apps/backend/src/db/schema/` — `auth.ts`, `notes.ts`, `users.ts`, `timestamps.ts`
+- Migrations output: `apps/backend/src/db/migrations/`
+- `DATABASE_URL` required in `apps/backend/.env`
 
 ## Gotchas
 
 - Frontend runs on port **3000** (Vite), backend on port **8000** (Bun) — not the same port
 - `requireAuth` middleware is applied globally after auth routes in `app.ts` — all subsequent routes are protected by default
-- Notes table currently lacks a `userId` column — queries are not user-scoped (needs implementation)
+- Notes table has a `userId` column (foreign key to `user.id` with cascade delete); all queries are user-scoped
 - Backend tsconfig uses `"verbatimModuleSyntax": true` and `"module": "Preserve"` — type-only imports must use `import type`
 - Frontend uses `tsr generate` to regenerate `routeTree.gen.ts` — run this after adding/changing route files
 - Biome (not ESLint/Prettier) in frontend
