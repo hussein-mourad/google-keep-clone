@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "#/components/ui/button";
 import {
 	Dialog,
@@ -30,6 +30,11 @@ export function EditNoteDialog({
 	const [title, setTitle] = useState(note?.title ?? "");
 	const [content, setContent] = useState(note?.content ?? "");
 	const [submitting, setSubmitting] = useState(false);
+
+	useEffect(() => {
+		setTitle(note?.title ?? "");
+		setContent(note?.content ?? "");
+	}, [note]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
