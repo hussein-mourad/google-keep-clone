@@ -11,6 +11,7 @@
     "test": "bun test --filter './apps/*'",
     "clean": "rm -rf 'apps/*/node_modules' 'packages/*/dist' 'packages/*/.bun'",
     "dev:backend": "bun run --filter backend dev",
+    "db:studio": "bun run --filter backend db:studio",
     "dev:frontend": "bun run --filter frontend dev"
   },
   "devDependencies": {
