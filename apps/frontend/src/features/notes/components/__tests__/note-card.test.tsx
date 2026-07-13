@@ -1,0 +1,151 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import type { Note } from "../../types";
+import { NoteCard } from "../note-card";
+
+vi.mock("#/components/ui/card", () => ({
+  Card: ({ children, ...props }: any) => (
+    <div data-testid="card" {...props}>
+      {children}
+    </div>
+  ),
+  CardHeader: ({ children }: any) => <div>{children}</div>,
+  CardContent: ({ children }: any) => <div>{children}</div>,
+}));
+
+vi.mock("#/components/ui/badge", () => ({
+  Badge: ({ children }: any) => <span data-testid="badge">{children}</span>,
+}));
+
+vi.mock("lucide-react", () => ({
+  PinIcon: (props: any) => <svg data-testid="pin-icon" {...props} />,
+  ArchiveIcon: (props: any) => <svg data-testid="archive-icon" {...props} />,
+  Trash2Icon: (props: any) => <svg data-testid="trash-icon" {...props} />,
+}));
+
+const baseNote: Note = {
+  id: 1,
+  title: "Test Note",
+  content: "Test content",
+  color: null,
+  isPinned: false,
+  isArchived: false,
+  isDeleted: false,
+  deletedAt: null,
+  labels: [],
+  createdAt: "2025-01-01T00:00:00Z",
+  updatedAt: "2025-01-01T00:00:00Z",
+};
+
+describe("NoteCard", () => {
+  it("renders title and content preview", () => {
+    render(<NoteCard note={baseNote} onClick={vi.fn()} />);
+    expect(screen.getByText("Test Note")).toBeTruthy();
+    expect(screen.getByText("Test content")).toBeTruthy();
+  });
+
+  it("renders pin icon when note is pinned", () => {
+    render(<NoteCard note={{ ...baseNote, isPinned: true }} onClick={vi.fn()} />);
+    expect(screen.queryByTestId("pin-icon")).toBeTruthy();
+  });
+
+  it("does not render pin icon when note is not pinned", () => {
+    render(<NoteCard note={baseNote} onClick={vi.fn()} />);
+    expect(screen.queryByTestId("pin-icon")).toBeNull();
+  });
+
+  it("truncates content longer than 150 chars", () => {
+    const longContent = "a".repeat(200);
+    render(<NoteCard note={{ ...baseNote, content: longContent }} onClick={vi.fn()} />);
+    expect(screen.getByText(/\.\.\.$/)).toBeTruthy();
+  });
+
+  it("renders labels as badges when note has labels", () => {
+    const noteWithLabels = {
+      ...baseNote,
+      labels: [
+        { id: 1, name: "work", createdAt: "", updatedAt: "" },
+        { id: 2, name: "personal", createdAt: "", updatedAt: "" },
+      ],
+    };
+    render(<NoteCard note={noteWithLabels} onClick={vi.fn()} />);
+    expect(screen.getByText("work")).toBeTruthy();
+    expect(screen.getByText("personal")).toBeTruthy();
+  });
+
+  it("applies background color from note color", () => {
+    const { container } = render(
+      <NoteCard note={{ ...baseNote, color: "#f28b82" }} onClick={vi.fn()} />,
+    );
+    const card = container.querySelector("[data-testid='card']") as HTMLElement;
+    expect(card.style.backgroundColor).toBe("rgb(242, 139, 130)");
+  });
+
+  it("calls onClick when card is clicked", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(<NoteCard note={baseNote} onClick={onClick} />);
+    await user.click(screen.getByText("Test Note"));
+    expect(onClick).toHaveBeenCalledWith(baseNote);
+  });
+
+  it("shows action buttons for notes view", () => {
+    render(
+      <NoteCard
+        note={baseNote}
+        onClick={vi.fn()}
+        onTogglePin={vi.fn()}
+        onArchive={vi.fn()}
+        onTrash={vi.fn()}
+        view="notes"
+      />,
+    );
+    expect(screen.queryByTestId("pin-icon")).toBeTruthy();
+    expect(screen.queryByTestId("archive-icon")).toBeTruthy();
+    expect(screen.queryByTestId("trash-icon")).toBeTruthy();
+  });
+
+  it("shows restore button for archived view", () => {
+    render(
+      <NoteCard
+        note={baseNote}
+        onClick={vi.fn()}
+        onRestore={vi.fn()}
+        view="archived"
+      />,
+    );
+    expect(screen.queryByTestId("archive-icon")).toBeTruthy();
+    expect(screen.queryByTestId("pin-icon")).toBeNull();
+    expect(screen.queryByTestId("trash-icon")).toBeNull();
+  });
+
+  it("shows restore and delete buttons for trash view", () => {
+    render(
+      <NoteCard
+        note={baseNote}
+        onClick={vi.fn()}
+        onRestore={vi.fn()}
+        onPermanentDelete={vi.fn()}
+        view="trash"
+      />,
+    );
+    expect(screen.queryByTestId("archive-icon")).toBeTruthy();
+    expect(screen.queryByTestId("trash-icon")).toBeTruthy();
+  });
+
+  it("calls onTogglePin when pin button is clicked", async () => {
+    const user = userEvent.setup();
+    const onTogglePin = vi.fn();
+    render(
+      <NoteCard
+        note={baseNote}
+        onClick={vi.fn()}
+        onTogglePin={onTogglePin}
+        view="notes"
+      />,
+    );
+    await user.click(screen.getByTestId("pin-icon").closest("button")!);
+    expect(onTogglePin).toHaveBeenCalledWith(baseNote);
+  });
+});

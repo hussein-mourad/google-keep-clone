@@ -25,6 +25,19 @@ export async function createLabel(req: Request, res: Response) {
   }
 }
 
+export async function getLabel(req: Request, res: Response) {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: "id is required" });
+    const label = await service.getLabel(+id, userId);
+    if (!label) return res.status(404).json({ error: "Label not found" });
+    res.json(label);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch label" });
+  }
+}
+
 export async function updateLabel(req: Request, res: Response) {
   try {
     const userId = (req as any).user.id;
