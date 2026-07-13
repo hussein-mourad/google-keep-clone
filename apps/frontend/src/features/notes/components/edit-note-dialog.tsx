@@ -1,15 +1,7 @@
-import { useEffect, useState } from "react";
-import { Button } from "#/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "#/components/ui/dialog";
-import { Input } from "#/components/ui/input";
-import { Textarea } from "#/components/ui/textarea";
+import { useState } from "react";
+import { Dialog, DialogContent } from "#/components/ui/dialog";
 import type { Note } from "../types";
+import { NoteForm } from "./note-form";
 
 interface EditNoteDialogProps {
 	note: Note | null;
@@ -27,72 +19,32 @@ export function EditNoteDialog({
 	onUpdate,
 	onDelete,
 }: EditNoteDialogProps) {
-	const [title, setTitle] = useState(note?.title ?? "");
-	const [content, setContent] = useState(note?.content ?? "");
-	const [submitting, setSubmitting] = useState(false);
+	const [version, setVersion] = useState(0);
 
-	useEffect(() => {
-		setTitle(note?.title ?? "");
-		setContent(note?.content ?? "");
-	}, [note]);
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!note || !title.trim() || !content.trim()) return;
-		setSubmitting(true);
-		try {
-			await onUpdate(note.id, { title: title.trim(), content: content.trim() });
-		} finally {
-			setSubmitting(false);
-		}
-	};
-
-	const handleDelete = async () => {
-		if (!note) return;
-		setSubmitting(true);
-		try {
-			await onDelete(note.id);
-		} finally {
-			setSubmitting(false);
+	const open = !!note;
+	const handleOpenChange = (open: boolean) => {
+		if (!open) {
+			onOpenChange(false);
+			setVersion((v) => v + 1);
 		}
 	};
 
 	return (
-		<Dialog open={!!note} onOpenChange={(open) => !open && onOpenChange(false)}>
+		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent>
-				<form onSubmit={handleSubmit}>
-					<DialogHeader>
-						<DialogTitle>Edit Note</DialogTitle>
-					</DialogHeader>
-					<div className="space-y-3 py-4">
-						<Input
-							placeholder="Title"
-							value={title}
-							onChange={(e) => setTitle(e.target.value)}
-							required
-						/>
-						<Textarea
-							placeholder="Take a note..."
-							value={content}
-							onChange={(e) => setContent(e.target.value)}
-							rows={5}
-							required
-						/>
-					</div>
-					<DialogFooter showCloseButton>
-						<Button
-							type="button"
-							variant="destructive"
-							disabled={submitting}
-							onClick={handleDelete}
-						>
-							Delete
-						</Button>
-						<Button type="submit" disabled={submitting}>
-							{submitting ? "Saving..." : "Save"}
-						</Button>
-					</DialogFooter>
-				</form>
+				<NoteForm
+					key={version}
+					initialTitle={note?.title ?? ""}
+					initialContent={note?.content ?? ""}
+					onSubmit={async (data) => {
+						if (!note) return;
+						await onUpdate(note.id, data);
+					}}
+					onDelete={async () => {
+						if (!note) return;
+						await onDelete(note.id);
+					}}
+				/>
 			</DialogContent>
 		</Dialog>
 	);
