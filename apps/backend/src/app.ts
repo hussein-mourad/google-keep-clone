@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import logger from "morgan";
 import cors from "cors";
 import notesRouter from "@/features/notes/router";
+import labelsRouter from "@/features/labels/router";
 import env from "@/lib/env";
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import { auth } from "@/lib/auth";
@@ -49,5 +50,6 @@ app.get("/api/health", (_, res) => {
 app.all("/api/auth/{*any}", toNodeHandler(auth));
 app.use(requireAuth);
 app.use("/api/notes", notesRouter);
+app.use("/api/labels", labelsRouter);
 
 export default app;

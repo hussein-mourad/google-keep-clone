@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -10,6 +11,7 @@ import {
 import { Field, FieldContent, FieldError } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import { Textarea } from "#/components/ui/textarea";
+import { LabelPicker } from "./label-picker";
 
 const noteSchema = z.object({
 	title: z.string().min(1, "Title is required"),
@@ -21,7 +23,8 @@ type NoteFormData = z.infer<typeof noteSchema>;
 interface NoteFormProps {
 	initialTitle?: string;
 	initialContent?: string;
-	onSubmit: (data: NoteFormData) => Promise<void>;
+	initialLabelIds?: number[];
+	onSubmit: (data: NoteFormData & { labelIds: number[] }) => Promise<void>;
 	onDelete?: () => Promise<void>;
 	submitLabel?: string;
 }
@@ -29,10 +32,13 @@ interface NoteFormProps {
 export function NoteForm({
 	initialTitle = "",
 	initialContent = "",
+	initialLabelIds = [],
 	onSubmit,
 	onDelete,
 	submitLabel = "Save",
 }: NoteFormProps) {
+	const [selectedLabelIds, setSelectedLabelIds] =
+		useState<number[]>(initialLabelIds);
 	const {
 		register,
 		handleSubmit,
@@ -43,7 +49,11 @@ export function NoteForm({
 	});
 
 	return (
-		<form onSubmit={handleSubmit(onSubmit)}>
+		<form
+			onSubmit={handleSubmit((data) =>
+				onSubmit({ ...data, labelIds: selectedLabelIds }),
+			)}
+		>
 			<DialogHeader>
 				<DialogTitle>{onDelete ? "Edit Note" : "New Note"}</DialogTitle>
 			</DialogHeader>
@@ -63,6 +73,14 @@ export function NoteForm({
 							required
 						/>
 						{errors.content && <FieldError errors={[errors.content]} />}
+					</FieldContent>
+				</Field>
+				<Field>
+					<FieldContent>
+						<LabelPicker
+							selectedIds={selectedLabelIds}
+							onChange={setSelectedLabelIds}
+						/>
 					</FieldContent>
 				</Field>
 			</div>

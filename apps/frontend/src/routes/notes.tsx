@@ -1,16 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { LogOutIcon, PlusIcon } from "lucide-react";
+import { LogOutIcon, PlusIcon, TagIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { authClient } from "#/lib/auth-client";
 import { ProtectedRoute } from "#/components/protected-route";
 import { ModeToggle } from "#/components/theme/toggle";
 import { Button } from "#/components/ui/button";
 import {
+	DropdownMenu,
+	DropdownMenuTrigger,
+	DropdownMenuContent,
+	DropdownMenuItem,
+} from "#/components/ui/dropdown-menu";
+import {
 	createNote,
 	deleteNote,
 	getNotes,
 	updateNote,
 } from "#/features/notes/api";
+import { getLabels } from "#/features/labels/api";
+import type { Label } from "#/features/labels/types";
 import { CreateNoteDialog } from "#/features/notes/components/create-note-dialog";
 import { EditNoteDialog } from "#/features/notes/components/edit-note-dialog";
 import { NotesGrid } from "#/features/notes/components/notes-grid";
@@ -26,6 +34,8 @@ function RouteComponent() {
 	const [loading, setLoading] = useState(true);
 	const [createOpen, setCreateOpen] = useState(false);
 	const [editingNote, setEditingNote] = useState<Note | null>(null);
+	const [labels, setLabels] = useState<Label[]>([]);
+	const [filterLabelId, setFilterLabelId] = useState<number | undefined>();
 
 	const handleSignOut = async () => {
 		await authClient.signOut();
@@ -34,7 +44,7 @@ function RouteComponent() {
 
 	async function loadNotes() {
 		try {
-			const data = await getNotes();
+			const data = await getNotes(filterLabelId);
 			setNotes(data);
 		} catch {
 			setNotes([]);
@@ -43,12 +53,30 @@ function RouteComponent() {
 		}
 	}
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount-only fetch
+	async function loadLabels() {
+		try {
+			const data = await getLabels();
+			setLabels(data);
+		} catch {
+			setLabels([]);
+		}
+	}
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only fetch
 	useEffect(() => {
-		loadNotes();
+		loadLabels();
 	}, []);
 
-	async function handleCreate(note: { title: string; content: string }) {
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reload when filter changes
+	useEffect(() => {
+		loadNotes();
+	}, [filterLabelId]);
+
+	async function handleCreate(note: {
+		title: string;
+		content: string;
+		labelIds: number[];
+	}) {
 		await createNote(note);
 		setCreateOpen(false);
 		await loadNotes();
@@ -56,7 +84,7 @@ function RouteComponent() {
 
 	async function handleUpdate(
 		id: number,
-		note: { title: string; content: string },
+		note: { title: string; content: string; labelIds: number[] },
 	) {
 		await updateNote(id, note);
 		setEditingNote(null);
@@ -69,12 +97,46 @@ function RouteComponent() {
 		await loadNotes();
 	}
 
+	const activeLabel = labels.find((l) => l.id === filterLabelId);
+
 	return (
 		<ProtectedRoute>
 			<div className="min-h-screen">
 				<header className="sticky top-0 z-10 flex items-center justify-between border-b bg-background/80 px-4 py-3 backdrop-blur-sm">
 					<h1 className="text-lg font-medium">Notes</h1>
 					<div className="flex items-center gap-2">
+						{filterLabelId && activeLabel && (
+							<div className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs">
+								<TagIcon className="size-3" />
+								{activeLabel.name}
+								<button
+									type="button"
+									onClick={() => setFilterLabelId(undefined)}
+									className="ml-0.5 rounded-full hover:bg-foreground/20"
+								>
+									<XIcon className="size-3" />
+								</button>
+							</div>
+						)}
+						<DropdownMenu>
+							<DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+								<TagIcon className="size-4" />
+								Filter
+							</DropdownMenuTrigger>
+							<DropdownMenuContent>
+								<DropdownMenuItem onClick={() => setFilterLabelId(undefined)}>
+									All notes
+								</DropdownMenuItem>
+								{labels.map((label) => (
+									<DropdownMenuItem
+										key={label.id}
+										onClick={() => setFilterLabelId(label.id)}
+									>
+										{label.name}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
 						<Button onClick={() => setCreateOpen(true)}>
 							<PlusIcon className="size-4" />
 							New Note

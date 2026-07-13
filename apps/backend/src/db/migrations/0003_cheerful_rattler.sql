@@ -1,0 +1,1 @@
+ALTER TABLE "note_labels" ADD CONSTRAINT "note_labels_note_id_label_id_pk" PRIMARY KEY("note_id","label_id");

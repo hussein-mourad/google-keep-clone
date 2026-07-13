@@ -4,7 +4,11 @@ import { NoteForm } from "./note-form";
 interface CreateNoteDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (note: { title: string; content: string }) => Promise<void>;
+	onSubmit: (note: {
+		title: string;
+		content: string;
+		labelIds: number[];
+	}) => Promise<void>;
 }
 
 export function CreateNoteDialog({

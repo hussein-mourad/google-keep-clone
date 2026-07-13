@@ -8,6 +8,34 @@
       "when": 1783904638783,
       "tag": "0000_previous_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783960296365,
+      "tag": "0001_smiling_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783961251647,
+      "tag": "0002_large_blockbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783962756125,
+      "tag": "0003_cheerful_rattler",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783967319362,
+      "tag": "0004_flippant_prima",
+      "breakpoints": true
     }
   ]
 }

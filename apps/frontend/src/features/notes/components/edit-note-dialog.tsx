@@ -8,7 +8,7 @@ interface EditNoteDialogProps {
 	onOpenChange: (open: boolean) => void;
 	onUpdate: (
 		id: number,
-		note: { title: string; content: string },
+		note: { title: string; content: string; labelIds: number[] },
 	) => Promise<void>;
 	onDelete: (id: number) => Promise<void>;
 }
@@ -36,6 +36,7 @@ export function EditNoteDialog({
 					key={version}
 					initialTitle={note?.title ?? ""}
 					initialContent={note?.content ?? ""}
+					initialLabelIds={note?.labels?.map((l) => l.id) ?? []}
 					onSubmit={async (data) => {
 						if (!note) return;
 						await onUpdate(note.id, data);
