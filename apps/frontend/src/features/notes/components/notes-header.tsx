@@ -28,23 +28,7 @@ export function NotesHeader({
 			<div className="flex items-center gap-2">
 				<SidebarTrigger />
 				<div className="flex items-center gap-2">
-					<div className="size-8 rounded-full bg-amber-400 p-1.5">
-						<svg
-							viewBox="0 0 24 24"
-							fill="none"
-							className="size-5 text-white"
-							aria-label="Keep"
-						>
-							<title>Keep</title>
-							<path
-								d="M12 2L2 7l10 5 10-5-10-5z"
-								fill="currentColor"
-								opacity="0.7"
-							/>
-							<path d="M2 17l10 5 10-5" fill="currentColor" opacity="0.5" />
-							<path d="M2 12l10 5 10-5" fill="currentColor" opacity="0.9" />
-						</svg>
-					</div>
+					<img src="/icon-192.png" alt="Keep" className="size-8" />
 					<span className="text-lg font-medium">Keep</span>
 				</div>
 			</div>
