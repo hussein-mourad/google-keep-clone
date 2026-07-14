@@ -132,57 +132,59 @@ export function NotesPage() {
 	}
 
 	return (
-		<SidebarProvider>
-			<div className="flex min-h-svh w-full">
-				<AppSidebar
-					view={view}
-					onViewChange={(v) => {
-						setView(v);
-						if (v !== "notes") setFilterLabelId(undefined);
-					}}
-					labels={labels}
-					filterLabelId={filterLabelId}
-					onFilterChange={(id) => {
-						setFilterLabelId(id);
-						if (id) setView("notes");
-					}}
+		<div className="[--header-height:calc(--spacing(14))]">
+			<SidebarProvider className="flex flex-col">
+				<NotesHeader
+					search={search}
+					onSearchChange={setSearch}
+					layout={layout}
+					onLayoutChange={setLayout}
+					user={session?.user ?? null}
 				/>
-				<SidebarInset>
-					<NotesHeader
-						search={search}
-						onSearchChange={setSearch}
-						layout={layout}
-						onLayoutChange={setLayout}
-						user={session?.user ?? null}
+				<div className="flex flex-1">
+					<AppSidebar
+						view={view}
+						onViewChange={(v) => {
+							setView(v);
+							if (v !== "notes") setFilterLabelId(undefined);
+						}}
+						labels={labels}
+						filterLabelId={filterLabelId}
+						onFilterChange={(id) => {
+							setFilterLabelId(id);
+							if (id) setView("notes");
+						}}
 					/>
-					<main className="flex-1 p-6">
-						{view === "notes" && <TakeNoteInput onSubmit={handleCreate} />}
-						{loading ? (
-							<div className="flex items-center justify-center py-20">
-								<div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-							</div>
-						) : (
-							<NotesGrid
-								notes={notes}
-								onNoteClick={setEditingNote}
-								onTogglePin={handleTogglePin}
-								onArchive={handleArchive}
-								onTrash={handleTrash}
-								onRestore={handleRestore}
-								onPermanentDelete={handlePermanentDelete}
-								view={view}
-								layout={layout}
-							/>
-						)}
-					</main>
-				</SidebarInset>
-			</div>
-			<EditNoteDialog
-				note={editingNote}
-				onOpenChange={() => setEditingNote(null)}
-				onUpdate={handleUpdate}
-				onDelete={handleDelete}
-			/>
-		</SidebarProvider>
+					<SidebarInset>
+						<main className="flex-1 p-6">
+							{view === "notes" && <TakeNoteInput onSubmit={handleCreate} />}
+							{loading ? (
+								<div className="flex items-center justify-center py-20">
+									<div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+								</div>
+							) : (
+								<NotesGrid
+									notes={notes}
+									onNoteClick={setEditingNote}
+									onTogglePin={handleTogglePin}
+									onArchive={handleArchive}
+									onTrash={handleTrash}
+									onRestore={handleRestore}
+									onPermanentDelete={handlePermanentDelete}
+									view={view}
+									layout={layout}
+								/>
+							)}
+						</main>
+					</SidebarInset>
+				</div>
+				<EditNoteDialog
+					note={editingNote}
+					onOpenChange={() => setEditingNote(null)}
+					onUpdate={handleUpdate}
+					onDelete={handleDelete}
+				/>
+			</SidebarProvider>
+		</div>
 	);
 }

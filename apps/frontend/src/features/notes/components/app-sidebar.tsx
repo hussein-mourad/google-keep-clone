@@ -1,3 +1,4 @@
+import * as React from "react";
 import { ArchiveIcon, FileTextIcon, TagIcon, Trash2Icon } from "lucide-react";
 import {
 	Sidebar,
@@ -12,7 +13,7 @@ import {
 } from "#/components/ui/sidebar";
 import type { Label } from "#/features/labels/types";
 
-interface AppSidebarProps {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	view: "notes" | "archived" | "trash";
 	onViewChange: (view: "notes" | "archived" | "trash") => void;
 	labels: Label[];
@@ -44,9 +45,14 @@ export function AppSidebar({
 	labels,
 	filterLabelId,
 	onFilterChange,
+	...props
 }: AppSidebarProps) {
 	return (
-		<Sidebar collapsible="icon">
+		<Sidebar
+			collapsible="icon"
+			className="top-(--header-height) h-[calc(100svh-var(--header-height))]!"
+			{...props}
+		>
 			<SidebarContent>
 				<SidebarGroup>
 					<SidebarGroupContent>

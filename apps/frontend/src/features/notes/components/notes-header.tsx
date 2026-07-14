@@ -1,7 +1,7 @@
-import { LayoutGridIcon, ListIcon, SearchIcon } from "lucide-react";
+import { LayoutGridIcon, ListIcon, SearchIcon, SidebarIcon } from "lucide-react";
 import { ModeToggle } from "#/components/theme/toggle";
 import { Button } from "#/components/ui/button";
-import { SidebarTrigger } from "#/components/ui/sidebar";
+import { useSidebar } from "#/components/ui/sidebar";
 import { ProfileDropdown } from "./profile-dropdown";
 
 interface NotesHeaderProps {
@@ -23,10 +23,14 @@ export function NotesHeader({
 	onLayoutChange,
 	user,
 }: NotesHeaderProps) {
+	const { toggleSidebar } = useSidebar();
+
 	return (
-		<header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background px-4 py-2">
+		<header className="sticky top-0 z-50 flex h-14 w-full items-center gap-4 border-b bg-background px-4">
 			<div className="flex items-center gap-2">
-				<SidebarTrigger />
+				<Button variant="ghost" size="icon-sm" onClick={toggleSidebar}>
+					<SidebarIcon className="size-4" />
+				</Button>
 				<div className="flex items-center gap-2">
 					<img src="/icon-192.png" alt="Keep" className="size-8" />
 					<span className="text-lg font-medium">Keep</span>
