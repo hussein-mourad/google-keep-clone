@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { SidebarInset, SidebarProvider } from "#/components/ui/sidebar";
 import { getLabels } from "#/features/labels/api";
 import type { Label } from "#/features/labels/types";
 import {
@@ -11,21 +12,22 @@ import {
 } from "#/features/notes/api";
 import type { Note } from "#/features/notes/types";
 import { authClient } from "#/lib/auth-client";
-import { CreateNoteDialog } from "../components/create-note-dialog";
+import { AppSidebar } from "../components/app-sidebar";
 import { EditNoteDialog } from "../components/edit-note-dialog";
 import { NotesGrid } from "../components/notes-grid";
 import { NotesHeader } from "../components/notes-header";
+import { TakeNoteInput } from "../components/take-note-input";
 
 export function NotesPage() {
 	const { data: session } = authClient.useSession();
 	const [notes, setNotes] = useState<Note[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [createOpen, setCreateOpen] = useState(false);
 	const [editingNote, setEditingNote] = useState<Note | null>(null);
 	const [labels, setLabels] = useState<Label[]>([]);
 	const [filterLabelId, setFilterLabelId] = useState<number | undefined>();
 	const [search, setSearch] = useState("");
 	const [view, setView] = useState<"notes" | "archived" | "trash">("notes");
+	const [layout, setLayout] = useState<"grid" | "list">("grid");
 	const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	async function loadNotes() {
@@ -78,9 +80,9 @@ export function NotesPage() {
 		content: string;
 		labelIds: number[];
 		color: string | null;
+		isPinned?: boolean;
 	}) {
 		await createNote(note);
-		setCreateOpen(false);
 		await loadNotes();
 	}
 
@@ -130,53 +132,57 @@ export function NotesPage() {
 	}
 
 	return (
-		<div className="min-h-screen">
-			<NotesHeader
-				labels={labels}
-				filterLabelId={filterLabelId}
-				onFilterChange={(id) => {
-					setFilterLabelId(id);
-					if (id) setView("notes");
-				}}
-				onNewNote={() => setCreateOpen(true)}
-				user={session?.user ?? null}
-				search={search}
-				onSearchChange={setSearch}
-				view={view}
-				onViewChange={(v) => {
-					setView(v);
-					if (v !== "notes") setFilterLabelId(undefined);
-				}}
-			/>
-			<main className="mx-auto max-w-7xl p-4">
-				{loading ? (
-					<div className="flex items-center justify-center py-20">
-						<div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-					</div>
-				) : (
-					<NotesGrid
-						notes={notes}
-						onNoteClick={setEditingNote}
-						onTogglePin={handleTogglePin}
-						onArchive={handleArchive}
-						onTrash={handleTrash}
-						onRestore={handleRestore}
-						onPermanentDelete={handlePermanentDelete}
-						view={view}
+		<SidebarProvider>
+			<div className="flex min-h-svh w-full">
+				<AppSidebar
+					view={view}
+					onViewChange={(v) => {
+						setView(v);
+						if (v !== "notes") setFilterLabelId(undefined);
+					}}
+					labels={labels}
+					filterLabelId={filterLabelId}
+					onFilterChange={(id) => {
+						setFilterLabelId(id);
+						if (id) setView("notes");
+					}}
+				/>
+				<SidebarInset>
+					<NotesHeader
+						search={search}
+						onSearchChange={setSearch}
+						layout={layout}
+						onLayoutChange={setLayout}
+						user={session?.user ?? null}
 					/>
-				)}
-			</main>
-			<CreateNoteDialog
-				open={createOpen}
-				onOpenChange={setCreateOpen}
-				onSubmit={handleCreate}
-			/>
+					<main className="flex-1 p-6">
+						{view === "notes" && <TakeNoteInput onSubmit={handleCreate} />}
+						{loading ? (
+							<div className="flex items-center justify-center py-20">
+								<div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+							</div>
+						) : (
+							<NotesGrid
+								notes={notes}
+								onNoteClick={setEditingNote}
+								onTogglePin={handleTogglePin}
+								onArchive={handleArchive}
+								onTrash={handleTrash}
+								onRestore={handleRestore}
+								onPermanentDelete={handlePermanentDelete}
+								view={view}
+								layout={layout}
+							/>
+						)}
+					</main>
+				</SidebarInset>
+			</div>
 			<EditNoteDialog
 				note={editingNote}
 				onOpenChange={() => setEditingNote(null)}
 				onUpdate={handleUpdate}
 				onDelete={handleDelete}
 			/>
-		</div>
+		</SidebarProvider>
 	);
 }

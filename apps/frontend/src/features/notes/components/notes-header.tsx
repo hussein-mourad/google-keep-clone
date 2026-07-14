@@ -1,111 +1,91 @@
-import { ArchiveIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { LayoutGridIcon, ListIcon, SearchIcon } from "lucide-react";
 import { ModeToggle } from "#/components/theme/toggle";
 import { Button } from "#/components/ui/button";
-import type { Label } from "#/features/labels/types";
-import { FilterDropdown } from "./filter-dropdown";
+import { SidebarTrigger } from "#/components/ui/sidebar";
 import { ProfileDropdown } from "./profile-dropdown";
 
 interface NotesHeaderProps {
-	labels: Label[];
-	filterLabelId?: number;
-	onFilterChange: (labelId: number | undefined) => void;
-	onNewNote: () => void;
+	search: string;
+	onSearchChange: (search: string) => void;
+	layout: "grid" | "list";
+	onLayoutChange: (layout: "grid" | "list") => void;
 	user: {
 		name?: string | null;
 		email?: string | null;
 		image?: string | null;
 	} | null;
-	search: string;
-	onSearchChange: (search: string) => void;
-	view: "notes" | "archived" | "trash";
-	onViewChange: (view: "notes" | "archived" | "trash") => void;
 }
 
 export function NotesHeader({
-	labels,
-	filterLabelId,
-	onFilterChange,
-	onNewNote,
-	user,
 	search,
 	onSearchChange,
-	view,
-	onViewChange,
+	layout,
+	onLayoutChange,
+	user,
 }: NotesHeaderProps) {
 	return (
-		<header className="sticky top-0 z-10 border-b bg-background/80 px-4 py-3 backdrop-blur-sm">
-			<div className="flex items-center justify-between">
-				<h1 className="text-lg font-medium">
-					{view === "notes"
-						? "Notes"
-						: view === "archived"
-							? "Archive"
-							: "Trash"}
-				</h1>
+		<header className="sticky top-0 z-10 flex items-center gap-4 border-b bg-background px-4 py-2">
+			<div className="flex items-center gap-2">
+				<SidebarTrigger />
 				<div className="flex items-center gap-2">
-					<FilterDropdown
-						labels={labels}
-						activeLabelId={view === "notes" ? filterLabelId : undefined}
-						onChange={onFilterChange}
-					/>
-					{view === "notes" && (
-						<Button onClick={onNewNote}>
-							<PlusIcon className="size-4" />
-							New Note
-						</Button>
-					)}
-					<ProfileDropdown user={user} />
-					<ModeToggle />
+					<div className="size-8 rounded-full bg-amber-400 p-1.5">
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							className="size-5 text-white"
+							aria-label="Keep"
+						>
+							<title>Keep</title>
+							<path
+								d="M12 2L2 7l10 5 10-5-10-5z"
+								fill="currentColor"
+								opacity="0.7"
+							/>
+							<path d="M2 17l10 5 10-5" fill="currentColor" opacity="0.5" />
+							<path d="M2 12l10 5 10-5" fill="currentColor" opacity="0.9" />
+						</svg>
+					</div>
+					<span className="text-lg font-medium">Keep</span>
 				</div>
 			</div>
-			<div className="mt-2 flex items-center gap-2">
-				<div className="relative flex-1">
-					<SearchIcon className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+			<div className="mx-auto flex max-w-xl flex-1">
+				<div className="relative w-full">
+					<SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 					<input
 						type="text"
-						placeholder="Search notes..."
+						placeholder="Search"
 						value={search}
 						onChange={(e) => onSearchChange(e.target.value)}
-						className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="h-10 w-full rounded-lg border border-input bg-secondary/50 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring"
 					/>
 				</div>
-				<div className="flex items-center rounded-md border p-0.5">
-					<button
-						type="button"
-						className={`flex items-center gap-1 rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
-							view === "notes"
-								? "bg-muted text-foreground"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => onViewChange("notes")}
-					>
-						Notes
-					</button>
-					<button
-						type="button"
-						className={`flex items-center gap-1 rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
-							view === "archived"
-								? "bg-muted text-foreground"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => onViewChange("archived")}
-					>
-						<ArchiveIcon className="size-3" />
-						Archive
-					</button>
-					<button
-						type="button"
-						className={`flex items-center gap-1 rounded-sm px-2.5 py-1 text-xs font-medium transition-colors ${
-							view === "trash"
-								? "bg-muted text-foreground"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-						onClick={() => onViewChange("trash")}
-					>
-						<Trash2Icon className="size-3" />
-						Trash
-					</button>
-				</div>
+			</div>
+
+			<div className="flex items-center gap-1">
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					onClick={() => onLayoutChange("grid")}
+					data-active={layout === "grid"}
+					className="data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+					title="Grid view"
+				>
+					<LayoutGridIcon className="size-4" />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					onClick={() => onLayoutChange("list")}
+					data-active={layout === "list"}
+					className="data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+					title="List view"
+				>
+					<ListIcon className="size-4" />
+				</Button>
+				<div className="mx-1 h-6 w-px bg-border" />
+				<ProfileDropdown user={user} />
+				<ModeToggle />
 			</div>
 		</header>
 	);

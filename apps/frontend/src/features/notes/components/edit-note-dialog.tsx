@@ -57,7 +57,7 @@ export function EditNoteDialog({
 	return (
 		<>
 			<Dialog open={open} onOpenChange={handleOpenChange}>
-				<DialogContent>
+				<DialogContent className="sm:max-w-lg">
 					<NoteForm
 						key={version}
 						initialTitle={note?.title ?? ""}

@@ -26,6 +26,7 @@ export async function createNote(note: {
 	content: string;
 	color?: string | null;
 	labelIds?: number[];
+	isPinned?: boolean;
 }): Promise<Note> {
 	const { data } = await api.post("/api/notes", note);
 	return data;

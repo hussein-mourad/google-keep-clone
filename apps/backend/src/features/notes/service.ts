@@ -123,7 +123,7 @@ export async function softDeleteNote(id: number, userId: string) {
 export async function restoreNote(id: number, userId: string) {
   const [result] = await db
     .update(notesTable)
-    .set({ isDeleted: false, deletedAt: null })
+    .set({ isDeleted: false, deletedAt: null, isArchived: false })
     .where(
       and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
     )
