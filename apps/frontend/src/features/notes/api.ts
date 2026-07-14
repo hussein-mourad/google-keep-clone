@@ -61,3 +61,7 @@ export async function permanentDeleteNote(id: number): Promise<Note> {
 	const { data } = await api.delete(`/api/notes/${id}`);
 	return data;
 }
+
+export async function reorderNotes(orderedIds: number[]): Promise<void> {
+	await api.put("/api/notes/reorder", { orderedIds });
+}

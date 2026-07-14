@@ -1,4 +1,9 @@
-import { LayoutGridIcon, ListIcon, SearchIcon, SidebarIcon } from "lucide-react";
+import {
+	LayoutGridIcon,
+	ListIcon,
+	SearchIcon,
+	SidebarIcon,
+} from "lucide-react";
 import { ModeToggle } from "#/components/theme/toggle";
 import { Button } from "#/components/ui/button";
 import { useSidebar } from "#/components/ui/sidebar";

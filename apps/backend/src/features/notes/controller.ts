@@ -117,3 +117,17 @@ export async function permanentDeleteNote(req: Request, res: Response) {
     res.status(400).json({ error: "Failed to delete note" });
   }
 }
+
+export async function reorderNotes(req: Request, res: Response) {
+  try {
+    const userId = (req as any).user.id;
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds) || !orderedIds.every((id: unknown) => typeof id === "number" && Number.isInteger(id))) {
+      return res.status(400).json({ error: "orderedIds must be an array of numbers" });
+    }
+    await service.reorderNotes(userId, orderedIds);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: "Failed to reorder notes" });
+  }
+}

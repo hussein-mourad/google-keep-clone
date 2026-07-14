@@ -1,4 +1,4 @@
-import { boolean, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { withTimestamps } from "./timestamps";
 
@@ -15,6 +15,7 @@ export const notesTable = pgTable("notes", {
   isArchived: boolean("is_archived").default(false).notNull(),
   isDeleted: boolean("is_deleted").default(false).notNull(),
   deletedAt: timestamp("deleted_at"),
+  sortOrder: integer("sort_order").default(0).notNull(),
 
   ...withTimestamps,
 });

@@ -43,7 +43,7 @@ export async function getNotes(userId: string, opts: GetNotesOptions = {}) {
     .select()
     .from(notesTable)
     .where(and(...conditions))
-    .orderBy(desc(notesTable.isPinned), desc(notesTable.updatedAt));
+    .orderBy(desc(notesTable.isPinned), notesTable.sortOrder, desc(notesTable.updatedAt));
 
   return attachLabels(notes);
 }
@@ -142,6 +142,22 @@ export async function permanentDeleteNote(id: number, userId: string) {
     .returning();
   if (!result) throw new Error("Failed to permanently delete note");
   return { ...result, labels: [] };
+}
+
+export async function reorderNotes(
+  userId: string,
+  orderedIds: number[],
+) {
+  return db.transaction(async (tx) => {
+    await Promise.all(
+      orderedIds.map((id, index) =>
+        tx
+          .update(notesTable)
+          .set({ sortOrder: index })
+          .where(and(eq(notesTable.id, id), eq(notesTable.userId, userId)))
+      ),
+    );
+  });
 }
 
 async function setNoteLabelsTx(

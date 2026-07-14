@@ -6,6 +6,7 @@ import {
 	createNote,
 	getNotes,
 	permanentDeleteNote,
+	reorderNotes,
 	restoreNote,
 	trashNote,
 	updateNote,
@@ -131,6 +132,17 @@ export function NotesPage() {
 		await loadNotes();
 	}
 
+	function handleReorder(activeId: number, overId: number) {
+		const idx = notes.findIndex((n) => n.id === activeId);
+		const overIdx = notes.findIndex((n) => n.id === overId);
+		if (idx === -1 || overIdx === -1) return;
+		const next = [...notes];
+		const [moved] = next.splice(idx, 1);
+		next.splice(overIdx, 0, moved);
+		setNotes(next);
+		reorderNotes(next.map((n) => n.id)).catch(() => loadNotes());
+	}
+
 	return (
 		<div className="[--header-height:calc(--spacing(14))]">
 			<SidebarProvider className="flex flex-col">
@@ -171,6 +183,7 @@ export function NotesPage() {
 									onTrash={handleTrash}
 									onRestore={handleRestore}
 									onPermanentDelete={handlePermanentDelete}
+									onReorder={handleReorder}
 									view={view}
 									layout={layout}
 								/>

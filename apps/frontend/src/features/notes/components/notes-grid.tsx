@@ -1,3 +1,22 @@
+import {
+	closestCenter,
+	DndContext,
+	type DragEndEvent,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import {
+	rectSortingStrategy,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVerticalIcon } from "lucide-react";
+import { cn } from "#/lib/utils";
 import type { Note } from "../types";
 import { NoteCard } from "./note-card";
 
@@ -9,6 +28,7 @@ interface NotesGridProps {
 	onTrash?: (note: Note) => void;
 	onRestore?: (note: Note) => void;
 	onPermanentDelete?: (note: Note) => void;
+	onReorder?: (activeId: number, overId: number) => void;
 	view?: "notes" | "archived" | "trash";
 	layout?: "grid" | "list";
 }
@@ -37,6 +57,69 @@ function EmptyState({ view }: { view: string }) {
 	);
 }
 
+function SortableNoteCard({
+	note,
+	onClick,
+	onTogglePin,
+	onArchive,
+	onTrash,
+	onRestore,
+	onPermanentDelete,
+	view,
+}: {
+	note: Note;
+	onClick: (note: Note) => void;
+	onTogglePin?: (note: Note) => void;
+	onArchive?: (note: Note) => void;
+	onTrash?: (note: Note) => void;
+	onRestore?: (note: Note) => void;
+	onPermanentDelete?: (note: Note) => void;
+	view?: "notes" | "archived" | "trash";
+}) {
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({ id: note.id });
+
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+	};
+
+	return (
+		<div
+			ref={setNodeRef}
+			style={style}
+			className={cn("w-full", isDragging && "z-50 shadow-xl")}
+		>
+			<div className="group/drag relative">
+				<button
+					type="button"
+					className="absolute -left-1 top-1/2 z-10 -translate-y-1/2 cursor-grab rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-foreground/10 active:cursor-grabbing group-hover/drag:opacity-100"
+					{...attributes}
+					{...listeners}
+				>
+					<GripVerticalIcon className="size-4" />
+				</button>
+				<NoteCard
+					note={note}
+					onClick={onClick}
+					onTogglePin={onTogglePin}
+					onArchive={onArchive}
+					onTrash={onTrash}
+					onRestore={onRestore}
+					onPermanentDelete={onPermanentDelete}
+					view={view}
+				/>
+			</div>
+		</div>
+	);
+}
+
 function NoteList({
 	notes,
 	onNoteClick,
@@ -45,45 +128,56 @@ function NoteList({
 	onTrash,
 	onRestore,
 	onPermanentDelete,
+	onReorder,
 	view,
 	layout,
 }: NotesGridProps) {
-	if (layout === "list") {
-		return (
-			<div className="mx-auto flex max-w-2xl flex-col gap-3">
-				{notes.map((note) => (
-					<NoteCard
-						key={note.id}
-						note={note}
-						onClick={onNoteClick}
-						onTogglePin={onTogglePin}
-						onArchive={onArchive}
-						onTrash={onTrash}
-						onRestore={onRestore}
-						onPermanentDelete={onPermanentDelete}
-						view={view}
-					/>
-				))}
-			</div>
-		);
+	const sensors = useSensors(
+		useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		}),
+	);
+
+	const strategy =
+		layout === "list" ? verticalListSortingStrategy : rectSortingStrategy;
+
+	function handleDragEnd(event: DragEndEvent) {
+		const { active, over } = event;
+		if (!over || active.id === over.id || !onReorder) return;
+		onReorder(active.id as number, over.id as number);
 	}
 
+	const list = notes.map((note) => (
+		<SortableNoteCard
+			key={note.id}
+			note={note}
+			onClick={onNoteClick}
+			onTogglePin={onTogglePin}
+			onArchive={onArchive}
+			onTrash={onTrash}
+			onRestore={onRestore}
+			onPermanentDelete={onPermanentDelete}
+			view={view}
+		/>
+	));
+
 	return (
-		<div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4 [&>*]:mb-4">
-			{notes.map((note) => (
-				<NoteCard
-					key={note.id}
-					note={note}
-					onClick={onNoteClick}
-					onTogglePin={onTogglePin}
-					onArchive={onArchive}
-					onTrash={onTrash}
-					onRestore={onRestore}
-					onPermanentDelete={onPermanentDelete}
-					view={view}
-				/>
-			))}
-		</div>
+		<DndContext
+			sensors={sensors}
+			collisionDetection={closestCenter}
+			onDragEnd={handleDragEnd}
+		>
+			<SortableContext items={notes.map((n) => n.id)} strategy={strategy}>
+				{layout === "list" ? (
+					<div className="mx-auto flex max-w-2xl flex-col gap-3">{list}</div>
+				) : (
+					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{list}
+					</div>
+				)}
+			</SortableContext>
+		</DndContext>
 	);
 }
 
