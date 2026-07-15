@@ -24,7 +24,7 @@ function IconButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
 	return (
 		<button
 			type="button"
-			className="flex size-8 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-all group-hover/card:opacity-100 hover:bg-foreground/10 hover:text-foreground"
+			className="flex size-8 items-center justify-center rounded-full opacity-60 transition-all group-hover/card:opacity-100 hover:opacity-100 hover:bg-current/10"
 			{...props}
 		/>
 	);
@@ -46,8 +46,12 @@ export function NoteCard({
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card wrapper needs div for nested buttons
 		<div
-			className="group/card relative w-full cursor-pointer break-inside-avoid rounded-lg border border-transparent bg-card text-start transition-all hover:border-border hover:shadow-sm"
-			style={note.color ? { backgroundColor: note.color } : undefined}
+			className="group/card relative w-full cursor-pointer break-inside-avoid rounded-lg border border-border bg-card text-start transition-all hover:shadow-sm"
+			style={
+				note.color
+					? { backgroundColor: note.color, color: "#202124" }
+					: undefined
+			}
 			onClick={() => onClick(note)}
 			onKeyDown={(e) => {
 				if (e.key === "Enter") onClick(note);
@@ -56,7 +60,7 @@ export function NoteCard({
 			tabIndex={0}
 		>
 			{note.isPinned && (
-				<PinIcon className="absolute right-2 top-2 size-4 rotate-45 text-muted-foreground" />
+				<PinIcon className="absolute right-2 top-2 size-4 rotate-45 opacity-60" />
 			)}
 			<div className="p-4 pb-2">
 				{note.title && (
@@ -65,7 +69,11 @@ export function NoteCard({
 					</h3>
 				)}
 				{note.content && (
-					<p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+					<p
+						className={`whitespace-pre-wrap text-sm leading-relaxed ${
+							note.color ? "" : "text-foreground/85"
+						}`}
+					>
 						{preview}
 						{hasMore && "..."}
 					</p>

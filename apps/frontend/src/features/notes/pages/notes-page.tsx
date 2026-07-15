@@ -196,6 +196,7 @@ export function NotesPage() {
 					onOpenChange={() => setEditingNote(null)}
 					onUpdate={handleUpdate}
 					onDelete={handleDelete}
+					onArchive={handleArchive}
 				/>
 			</SidebarProvider>
 		</div>

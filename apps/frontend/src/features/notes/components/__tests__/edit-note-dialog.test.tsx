@@ -35,17 +35,6 @@ vi.mock("#/components/ui/dialog", () => ({
 	DialogContent: ({ children }: any) => <div>{children}</div>,
 }));
 
-vi.mock("#/components/ui/alert-dialog", () => ({
-	AlertDialog: ({ children, open }: any) =>
-		open ? <div data-testid="alert-dialog">{children}</div> : null,
-	AlertDialogCancel: ({ children }: any) => <button>{children}</button>,
-	AlertDialogContent: ({ children }: any) => <div>{children}</div>,
-	AlertDialogHeader: ({ children }: any) => <div>{children}</div>,
-	AlertDialogTitle: ({ children }: any) => <div>{children}</div>,
-	AlertDialogDescription: ({ children }: any) => <div>{children}</div>,
-	AlertDialogFooter: ({ children }: any) => <div>{children}</div>,
-}));
-
 vi.mock("#/components/ui/button", () => ({
 	Button: ({ children, ...props }: any) => (
 		<button {...props}>{children}</button>
@@ -74,6 +63,7 @@ describe("EditNoteDialog", () => {
 				onOpenChange={vi.fn()}
 				onUpdate={vi.fn()}
 				onDelete={vi.fn()}
+				onArchive={vi.fn()}
 			/>,
 		);
 		expect(screen.queryByTestId("dialog")).toBeTruthy();
@@ -86,6 +76,7 @@ describe("EditNoteDialog", () => {
 				onOpenChange={vi.fn()}
 				onUpdate={vi.fn()}
 				onDelete={vi.fn()}
+				onArchive={vi.fn()}
 			/>,
 		);
 		expect(screen.queryByTestId("dialog")).toBeNull();
@@ -100,6 +91,7 @@ describe("EditNoteDialog", () => {
 				onOpenChange={vi.fn()}
 				onUpdate={onUpdate}
 				onDelete={vi.fn()}
+				onArchive={vi.fn()}
 			/>,
 		);
 		await user.click(screen.getByTestId("form-submit"));
@@ -119,11 +111,13 @@ describe("EditNoteDialog", () => {
 				onOpenChange={vi.fn()}
 				onUpdate={vi.fn()}
 				onDelete={vi.fn()}
+				onArchive={vi.fn()}
 			/>,
 		);
 		await user.click(screen.getByTestId("form-delete"));
-		expect(screen.queryByTestId("alert-dialog")).toBeTruthy();
-		expect(screen.getByText("Delete note?")).toBeTruthy();
+		expect(
+			screen.getByText("Delete note? It will be moved to the trash."),
+		).toBeTruthy();
 	});
 
 	it("calls onDelete when confirmed in alert", async () => {
@@ -135,6 +129,7 @@ describe("EditNoteDialog", () => {
 				onOpenChange={vi.fn()}
 				onUpdate={vi.fn()}
 				onDelete={onDelete}
+				onArchive={vi.fn()}
 			/>,
 		);
 		await user.click(screen.getByTestId("form-delete"));

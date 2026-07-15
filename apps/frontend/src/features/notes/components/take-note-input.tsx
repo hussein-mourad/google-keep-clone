@@ -1,8 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PinIcon, XIcon } from "lucide-react";
+import { PaletteIcon, PinIcon, TagIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { LabelPicker } from "./label-picker";
 
 const noteSchema = z.object({
 	title: z.string().optional(),
@@ -38,6 +39,8 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 	const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
 	const [selectedColor, setSelectedColor] = useState<string | null>(null);
 	const [isPinned, setIsPinned] = useState(false);
+	const [showColorPicker, setShowColorPicker] = useState(false);
+	const [showLabelPicker, setShowLabelPicker] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const titleRef = useRef<HTMLInputElement>(null);
@@ -77,6 +80,8 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 		setSelectedLabelIds([]);
 		setSelectedColor(null);
 		setIsPinned(false);
+		setShowColorPicker(false);
+		setShowLabelPicker(false);
 		reset({ title: "", content: "" });
 	}
 
@@ -136,13 +141,21 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 		<div className="mx-auto mb-6 w-full max-w-2xl" ref={containerRef}>
 			<div
 				className="rounded-lg border bg-card shadow-md"
-				style={selectedColor ? { backgroundColor: selectedColor } : undefined}
+				style={
+					selectedColor
+						? { backgroundColor: selectedColor, color: "#202124" }
+						: undefined
+				}
 			>
 				<form onSubmit={handleSubmit(handleFormSubmit)}>
 					<div className="px-4 pb-2 pt-3">
 						<input
 							placeholder="Title"
-							className="w-full bg-transparent text-base font-medium outline-none placeholder:text-muted-foreground/60"
+							className={`w-full bg-transparent text-base font-medium outline-none ${
+								selectedColor
+									? "placeholder:text-[#5f6368]/50"
+									: "placeholder:text-muted-foreground/60"
+							}`}
 							{...register("title")}
 							ref={(e) => {
 								register("title").ref(e);
@@ -156,44 +169,103 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 					<div className="px-4 pb-3">
 						<textarea
 							placeholder="Take a note..."
-							className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+							className={`w-full resize-none bg-transparent text-sm outline-none ${
+								selectedColor
+									? "placeholder:text-[#5f6368]/50"
+									: "placeholder:text-muted-foreground/60"
+							}`}
 							rows={2}
 							{...register("content")}
 							onKeyDown={handleKeyDown}
 							onBlur={handleBlur}
 						/>
 					</div>
+
+					{showLabelPicker && (
+						<div className="border-t px-4 py-3">
+							<LabelPicker
+								selectedIds={selectedLabelIds}
+								onChange={setSelectedLabelIds}
+							/>
+						</div>
+					)}
+
+					{showColorPicker && (
+						<div className="border-t px-4 py-2">
+							<div className="flex items-center gap-1.5">
+								{NOTE_COLORS.map((c) => (
+									<button
+										key={c.name}
+										type="button"
+										title={c.name}
+										className={`size-7 rounded-full border-2 transition-all ${
+											selectedColor === c.value
+												? "scale-110 border-foreground"
+												: "border-transparent hover:scale-110"
+										}`}
+										style={c.value ? { backgroundColor: c.value } : undefined}
+										onClick={() => {
+											setSelectedColor(c.value);
+											setShowColorPicker(false);
+										}}
+									>
+										{!c.value && (
+											<div className="flex h-full items-center justify-center">
+												<div className="size-3 rounded-full border border-dashed border-muted-foreground" />
+											</div>
+										)}
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+
 					<div className="flex items-center justify-between border-t px-2 py-1">
-						<div className="flex items-center gap-1">
+						<div className="flex items-center gap-0.5">
 							<button
 								type="button"
 								onClick={() => setIsPinned(!isPinned)}
-								className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-foreground/10 ${
-									isPinned ? "text-foreground" : "text-muted-foreground"
+								className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-current/10 ${
+									isPinned
+										? selectedColor
+											? "text-[#202124]"
+											: "text-foreground"
+										: selectedColor
+											? "text-[#5f6368]"
+											: "text-muted-foreground"
 								}`}
 								title="Pin note"
 							>
 								<PinIcon className={`size-4 ${isPinned ? "rotate-45" : ""}`} />
 							</button>
-							<ColorButton
-								colors={NOTE_COLORS}
-								selected={selectedColor}
-								onChange={setSelectedColor}
-							/>
+							<button
+								type="button"
+								onClick={() => setShowColorPicker(!showColorPicker)}
+								className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-current/10 ${
+									selectedColor ? "text-[#5f6368]" : "text-muted-foreground"
+								}`}
+								title="Background color"
+							>
+								<PaletteIcon className="size-4" />
+							</button>
+							<button
+								type="button"
+								onClick={() => setShowLabelPicker(!showLabelPicker)}
+								className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-current/10 ${
+									selectedColor ? "text-[#5f6368]" : "text-muted-foreground"
+								}`}
+								title="Add label"
+							>
+								<TagIcon className="size-4" />
+							</button>
 						</div>
 						<div className="flex items-center gap-1">
 							<button
-								type="button"
-								onClick={collapse}
-								className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10"
-								title="Close"
-							>
-								<XIcon className="size-4" />
-							</button>
-							<button
 								type="submit"
 								disabled={submitting}
-								className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-foreground/10 disabled:opacity-50"
+								className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-current/10 disabled:opacity-50 ${
+									selectedColor ? "text-[#202124]" : "text-foreground"
+								}`}
 							>
 								{submitting ? "Saving..." : "Close"}
 							</button>
@@ -201,67 +273,6 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 					</div>
 				</form>
 			</div>
-		</div>
-	);
-}
-
-function ColorButton({
-	colors,
-	selected,
-	onChange,
-}: {
-	colors: { name: string; value: string | null }[];
-	selected: string | null;
-	onChange: (color: string | null) => void;
-}) {
-	const [open, setOpen] = useState(false);
-
-	return (
-		<div className="relative">
-			<button
-				type="button"
-				onClick={() => setOpen(!open)}
-				className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10"
-				title="Background color"
-			>
-				<div className="size-4 rounded-sm border border-current" />
-			</button>
-			{open && (
-				<>
-					<button
-						type="button"
-						className="fixed inset-0 z-10"
-						tabIndex={-1}
-						aria-hidden="true"
-						onClick={() => setOpen(false)}
-					/>
-					<div className="absolute left-0 top-full z-20 mt-1 flex gap-1 rounded-lg border bg-popover p-2 shadow-lg">
-						{colors.map((c) => (
-							<button
-								key={c.name}
-								type="button"
-								title={c.name}
-								className={`size-6 rounded-full border-2 transition-all ${
-									selected === c.value
-										? "scale-110 border-foreground"
-										: "border-transparent hover:scale-110"
-								}`}
-								style={c.value ? { backgroundColor: c.value } : undefined}
-								onClick={() => {
-									onChange(c.value);
-									setOpen(false);
-								}}
-							>
-								{!c.value && (
-									<div className="flex h-full items-center justify-center">
-										<div className="size-3 rounded-full border border-dashed border-muted-foreground" />
-									</div>
-								)}
-							</button>
-						))}
-					</div>
-				</>
-			)}
 		</div>
 	);
 }
