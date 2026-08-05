@@ -95,6 +95,7 @@ export function NotesPage() {
 			content: string;
 			labelIds: number[];
 			color: string | null;
+			isPinned?: boolean;
 		},
 	) {
 		await updateNote(id, note);
@@ -170,7 +171,12 @@ export function NotesPage() {
 					/>
 					<SidebarInset>
 						<main className="flex-1 p-6">
-							{view === "notes" && <TakeNoteInput onSubmit={handleCreate} />}
+							{view === "notes" && (
+								<TakeNoteInput
+									onSubmit={handleCreate}
+									onUpdate={handleUpdate}
+								/>
+							)}
 							{loading ? (
 								<div className="flex items-center justify-center py-20">
 									<div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

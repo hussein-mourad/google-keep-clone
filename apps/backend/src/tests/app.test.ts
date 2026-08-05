@@ -75,22 +75,24 @@ describe("notes API", () => {
     assert.equal(res.body.color, "#f28b82");
   });
 
-  it("POST /api/notes rejects missing title", async () => {
+  it("POST /api/notes allows missing title (image-only notes)", async () => {
     const res = await request(app)
       .post("/api/notes")
       .send({ content: "Content" })
-      .expect(400);
+      .expect(200);
 
-    assert.equal(res.body.message, "Title is required");
+    assert.equal(res.body.title, "");
+    assert.equal(res.body.content, "Content");
   });
 
-  it("POST /api/notes rejects missing content", async () => {
+  it("POST /api/notes allows missing content (image-only notes)", async () => {
     const res = await request(app)
       .post("/api/notes")
       .send({ title: "Title" })
-      .expect(400);
+      .expect(200);
 
-    assert.equal(res.body.message, "Content is required");
+    assert.equal(res.body.title, "Title");
+    assert.equal(res.body.content, "");
   });
 
   it("GET /api/notes/:id returns a note", async () => {

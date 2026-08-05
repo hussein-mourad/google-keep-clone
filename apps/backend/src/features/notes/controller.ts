@@ -23,14 +23,8 @@ export async function createNote(req: Request, res: Response) {
   try {
     const userId = (req as any).user.id;
     const { title, content, labelIds, color } = req.body;
-    if (!title) {
-      return res.status(400).json({ message: "Title is required" });
-    }
-    if (!content) {
-      return res.status(400).json({ message: "Content is required" });
-    }
     const note = await service.createNote(
-      { title, content, userId, color: color ?? null },
+      { title: title ?? "", content: content ?? "", userId, color: color ?? null },
       labelIds,
       userId,
     );

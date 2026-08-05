@@ -5,13 +5,14 @@ import {
 	PaletteIcon,
 	PinIcon,
 	TagIcon,
+	Trash2Icon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { uploadNoteImage } from "../api";
-import type { Note } from "../types";
+import { deleteNoteImage, permanentDeleteNote, uploadNoteImage } from "../api";
+import type { Note, NoteImage } from "../types";
 import { LabelPicker } from "./label-picker";
 
 const noteSchema = z.object({
@@ -33,6 +34,8 @@ const NOTE_COLORS = [
 	{ name: "Pink", value: "#fdcfe8" },
 ];
 
+const SAVE_DEBOUNCE_MS = 600;
+
 interface TakeNoteInputProps {
 	onSubmit: (note: {
 		title: string;
@@ -41,26 +44,43 @@ interface TakeNoteInputProps {
 		color: string | null;
 		isPinned?: boolean;
 	}) => Promise<Note>;
+	onUpdate: (
+		id: number,
+		note: {
+			title: string;
+			content: string;
+			labelIds: number[];
+			color: string | null;
+			isPinned?: boolean;
+		},
+	) => Promise<void>;
 }
 
-export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
+export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 	const [expanded, setExpanded] = useState(false);
 	const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
 	const [selectedColor, setSelectedColor] = useState<string | null>(null);
 	const [isPinned, setIsPinned] = useState(false);
 	const [showColorPicker, setShowColorPicker] = useState(false);
 	const [showLabelPicker, setShowLabelPicker] = useState(false);
-	const [submitting, setSubmitting] = useState(false);
 	const [uploading, setUploading] = useState(false);
-	const [noteId, setNoteId] = useState<number | null>(null);
+	const [images, setImages] = useState<NoteImage[]>([]);
+	const noteIdRef = useRef<number | null>(null);
+	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const closingRef = useRef(false);
+	const mouseDownInsideRef = useRef(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const titleRef = useRef<HTMLInputElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const { register, handleSubmit, reset } = useForm<NoteFormData>({
-		resolver: zodResolver(noteSchema),
-		defaultValues: { title: "", content: "" },
-	});
+	const { register, handleSubmit, getValues, reset, watch } =
+		useForm<NoteFormData>({
+			resolver: zodResolver(noteSchema),
+			defaultValues: { title: "", content: "" },
+		});
+
+	const watchedTitle = watch("title");
+	const watchedContent = watch("content");
 
 	useEffect(() => {
 		if (expanded && titleRef.current) {
@@ -68,24 +88,109 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 		}
 	}, [expanded]);
 
-	const handleFormSubmit = async (data: NoteFormData) => {
-		const title = data.title?.trim() ?? "";
-		const content = data.content?.trim() ?? "";
-		if (!title && !content) {
-			collapse();
-			return;
+	useEffect(() => {
+		if (!expanded) return;
+		function onDocMouseDown(e: MouseEvent) {
+			mouseDownInsideRef.current =
+				containerRef.current?.contains(e.target as Node) ?? false;
 		}
-		setSubmitting(true);
-		const created = await onSubmit({
-			title,
-			content,
-			labelIds: selectedLabelIds,
-			color: selectedColor,
-			isPinned,
-		});
-		setNoteId(created.id);
-		setSubmitting(false);
-		collapse();
+		document.addEventListener("mousedown", onDocMouseDown);
+		return () => document.removeEventListener("mousedown", onDocMouseDown);
+	}, [expanded]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: save reads live form state via getValues
+	useEffect(() => {
+		if (!expanded) return;
+		if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+		saveTimerRef.current = setTimeout(() => {
+			saveTimerRef.current = null;
+			void flushSave();
+		}, SAVE_DEBOUNCE_MS);
+		return () => {
+			if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+		};
+	}, [
+		expanded,
+		watchedTitle,
+		watchedContent,
+		selectedColor,
+		isPinned,
+		selectedLabelIds,
+	]);
+
+	async function flushSave() {
+		if (closingRef.current) return;
+		const { title, content } = getValues();
+		const t = title?.trim() ?? "";
+		const c = content?.trim() ?? "";
+		if (!t && !c) return;
+		try {
+			if (noteIdRef.current) {
+				await onUpdate(noteIdRef.current, {
+					title: t,
+					content: c,
+					labelIds: selectedLabelIds,
+					color: selectedColor,
+					isPinned,
+				});
+			} else {
+				const created = await onSubmit({
+					title: t,
+					content: c,
+					labelIds: selectedLabelIds,
+					color: selectedColor,
+					isPinned,
+				});
+				noteIdRef.current = created.id;
+			}
+		} catch {
+			toast.error("Failed to save note");
+		}
+	}
+
+	async function closeComposer() {
+		if (closingRef.current) return;
+		closingRef.current = true;
+		if (saveTimerRef.current) {
+			clearTimeout(saveTimerRef.current);
+			saveTimerRef.current = null;
+		}
+		const { title, content } = getValues();
+		const t = title?.trim() ?? "";
+		const c = content?.trim() ?? "";
+		const hasData = Boolean(t || c || images.length > 0);
+		try {
+			if (noteIdRef.current) {
+				if (!hasData) {
+					await permanentDeleteNote(noteIdRef.current);
+				} else {
+					await onUpdate(noteIdRef.current, {
+						title: t,
+						content: c,
+						labelIds: selectedLabelIds,
+						color: selectedColor,
+						isPinned,
+					});
+				}
+			} else if (hasData) {
+				await onSubmit({
+					title: t,
+					content: c,
+					labelIds: selectedLabelIds,
+					color: selectedColor,
+					isPinned,
+				});
+			}
+		} catch {
+			toast.error("Failed to save note");
+		} finally {
+			closingRef.current = false;
+			collapse();
+		}
+	}
+
+	const handleFormSubmit = () => {
+		void closeComposer();
 	};
 
 	async function handleFileSelect(files: FileList | null) {
@@ -94,8 +199,9 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 
 		setUploading(true);
 		try {
-			const nid = noteId ?? (await submitAndGetNoteId());
-			await uploadNoteImage(nid, file);
+			const nid = noteIdRef.current ?? (await submitAndGetNoteId());
+			const uploaded = await uploadNoteImage(nid, file);
+			setImages((prev) => [...prev, uploaded]);
 		} catch {
 			toast.error("Failed to upload image");
 		} finally {
@@ -104,17 +210,26 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 		}
 	}
 
+	async function handleRemoveImage(imageId: number) {
+		try {
+			await deleteNoteImage(imageId);
+			setImages((prev) => prev.filter((img) => img.id !== imageId));
+		} catch {
+			toast.error("Failed to delete image");
+		}
+	}
+
 	async function submitAndGetNoteId(): Promise<number> {
+		if (noteIdRef.current) return noteIdRef.current;
 		const { title, content } = getValues();
-		if (!title?.trim() && !content?.trim()) throw new Error("No content");
 		const created = await onSubmit({
-			title: title?.trim() || "Untitled",
-			content: content?.trim() || "",
+			title: title?.trim() ?? "",
+			content: content?.trim() ?? "",
 			labelIds: selectedLabelIds,
 			color: selectedColor,
 			isPinned,
 		});
-		setNoteId(created.id);
+		noteIdRef.current = created.id;
 		return created.id;
 	}
 
@@ -125,27 +240,25 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 		setIsPinned(false);
 		setShowColorPicker(false);
 		setShowLabelPicker(false);
-		setNoteId(null);
+		setImages([]);
+		noteIdRef.current = null;
 		reset({ title: "", content: "" });
 	}
 
-	// Close on blur if both fields are empty
+	// Close on blur if the focus leaves the composer
 	function handleBlur(e: React.FocusEvent) {
+		if (uploading || closingRef.current) return;
+		// Clicks on non-focusable areas inside (e.g. padding) move focus to <body>,
+		// so check whether the click that caused this blur originated inside.
+		if (mouseDownInsideRef.current) {
+			mouseDownInsideRef.current = false;
+			return;
+		}
 		if (
 			containerRef.current &&
-			!containerRef.current.contains(e.relatedTarget)
+			!containerRef.current.contains(e.relatedTarget as Node)
 		) {
-			const form = containerRef.current.querySelector("form");
-			if (form) {
-				const title = (form.elements.namedItem("title") as HTMLInputElement)
-					?.value;
-				const content = (
-					form.elements.namedItem("content") as HTMLTextAreaElement
-				)?.value;
-				if (!title?.trim() && !content?.trim()) {
-					collapse();
-				}
-			}
+			void closeComposer();
 		}
 	}
 
@@ -153,17 +266,7 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 	function handleKeyDown(e: React.KeyboardEvent) {
 		if (e.key === "Escape" && expanded) {
 			e.preventDefault();
-			const form = containerRef.current?.querySelector("form");
-			if (form) {
-				const title = (form.elements.namedItem("title") as HTMLInputElement)
-					?.value;
-				const content = (
-					form.elements.namedItem("content") as HTMLTextAreaElement
-				)?.value;
-				if (!title?.trim() && !content?.trim()) {
-					collapse();
-				}
-			}
+			if (!uploading) void closeComposer();
 		}
 	}
 
@@ -183,8 +286,10 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 
 	return (
 		<div className="mx-auto mb-6 w-full max-w-2xl" ref={containerRef}>
-			<div
+			<section
+				aria-label="New note composer"
 				className="rounded-lg border bg-card shadow-md"
+				onBlur={handleBlur}
 				style={
 					selectedColor
 						? { backgroundColor: selectedColor, color: "#202124" }
@@ -192,6 +297,36 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 				}
 			>
 				<form onSubmit={handleSubmit(handleFormSubmit)}>
+					{images.length > 0 && (
+						<div className="columns-2 gap-2 px-4 pb-2 pt-3">
+							{images.map((image) => (
+								<div
+									key={image.id}
+									className="group relative mb-2 break-inside-avoid"
+								>
+									<img
+										src={image.presignedUrl}
+										alt={image.filename}
+										className="max-h-40 w-full rounded-md object-contain"
+										loading="lazy"
+										style={
+											image.width && image.height
+												? { aspectRatio: `${image.width} / ${image.height}` }
+												: undefined
+										}
+									/>
+									<button
+										type="button"
+										onClick={() => handleRemoveImage(image.id)}
+										className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
+										title="Remove image"
+									>
+										<Trash2Icon className="size-3" />
+									</button>
+								</div>
+							))}
+						</div>
+					)}
 					<div className="px-4 pb-2 pt-3">
 						<input
 							placeholder="Title"
@@ -228,7 +363,6 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 							rows={2}
 							{...register("content")}
 							onKeyDown={handleKeyDown}
-							onBlur={handleBlur}
 						/>
 					</div>
 
@@ -333,17 +467,17 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 						<div className="flex items-center gap-1">
 							<button
 								type="submit"
-								disabled={submitting}
+								disabled={uploading || closingRef.current}
 								className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors hover:bg-current/10 disabled:opacity-50 ${
 									selectedColor ? "text-[#202124]" : "text-foreground"
 								}`}
 							>
-								{submitting ? "Saving..." : "Close"}
+								Close
 							</button>
 						</div>
 					</div>
 				</form>
-			</div>
+			</section>
 		</div>
 	);
 }
