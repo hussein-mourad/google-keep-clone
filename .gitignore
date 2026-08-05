@@ -4,3 +4,7 @@ node_modules
 !.env.example
 dist
 out
+test-results
+playwright-report
+blob-report
+playwright/.cache

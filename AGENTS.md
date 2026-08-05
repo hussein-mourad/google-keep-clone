@@ -34,6 +34,10 @@ Start backend before frontend (Vite proxies via `VITE_BACKEND_URL`).
 | `bun run db:push` | `apps/backend/` | Push schema to DB (dev shortcut) |
 | `bun run test` | `apps/frontend/` | Vitest |
 | `bun run test` | `apps/backend/` | Vitest |
+| `bun run test:e2e` | root | Playwright e2e (starts backend + frontend automatically) |
+| `bun run test:e2e` | `apps/frontend/` | Playwright e2e |
+| `bun run test:e2e:ui` | `apps/frontend/` | Playwright UI mode |
+| `bun run test:e2e:install` | `apps/frontend/` | Install Playwright browsers |
 | `bun run check` | `apps/frontend/` | Biome lint+format |
 | `bun run generate-routes` | `apps/frontend/` | Regenerate TanStack Router route tree |
 
