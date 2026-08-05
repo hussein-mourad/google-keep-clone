@@ -1,7 +1,9 @@
 import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
+import { noteImages, type NewNoteImage } from "../../db/schema/note-images";
 import { notesTable, type NewNote } from "../../db/schema/notes";
 import { noteLabels, labels } from "../../db/schema/labels";
+import { getStorage } from "../../lib/storage";
 
 interface GetNotesOptions {
   labelId?: number;
@@ -45,7 +47,8 @@ export async function getNotes(userId: string, opts: GetNotesOptions = {}) {
     .where(and(...conditions))
     .orderBy(desc(notesTable.isPinned), notesTable.sortOrder, desc(notesTable.updatedAt));
 
-  return attachLabels(notes);
+  const withLabels = await attachLabels(notes);
+  return attachImages(withLabels);
 }
 
 export async function getNote(id: number, userId: string) {
@@ -55,7 +58,29 @@ export async function getNote(id: number, userId: string) {
     .where(and(eq(notesTable.id, id), eq(notesTable.userId, userId)));
   if (!note) return undefined;
   const noteLabelsResult = await getNoteLabelsById(note.id);
-  return { ...note, labels: noteLabelsResult };
+  const images = await getNoteImages(note.id);
+  const storage = getStorage();
+  const imagesWithUrls = await Promise.all(
+    images.map(async (img) => {
+      const presignedUrl = storage
+        ? await storage.getSignedUrl(img.key)
+        : "";
+      return {
+        id: img.id,
+        noteId: img.noteId,
+        key: img.key,
+        filename: img.filename,
+        mimeType: img.mimeType,
+        size: img.size,
+        width: img.width,
+        height: img.height,
+        presignedUrl,
+        createdAt: img.createdAt,
+        updatedAt: img.updatedAt,
+      };
+    }),
+  );
+  return { ...note, labels: noteLabelsResult, images: imagesWithUrls };
 }
 
 export async function createNote(
@@ -72,7 +97,7 @@ export async function createNote(
     }
 
     const noteLabelsResult = await getNoteLabelsByIdTx(tx, result.id);
-    return { ...result, labels: noteLabelsResult };
+    return { ...result, labels: noteLabelsResult, images: [] };
   });
 }
 
@@ -103,7 +128,29 @@ export async function updateNote(
     }
 
     const noteLabelsResult = await getNoteLabelsByIdTx(tx, id);
-    return { ...result, labels: noteLabelsResult };
+    const noteImagesResult = await getNoteImages(id);
+    const storage = getStorage();
+    const imagesWithUrls = await Promise.all(
+      noteImagesResult.map(async (img) => {
+        const presignedUrl = storage
+          ? await storage.getSignedUrl(img.key)
+          : "";
+        return {
+          id: img.id,
+          noteId: img.noteId,
+          key: img.key,
+          filename: img.filename,
+          mimeType: img.mimeType,
+          size: img.size,
+          width: img.width,
+          height: img.height,
+          presignedUrl,
+          createdAt: img.createdAt,
+          updatedAt: img.updatedAt,
+        };
+      }),
+    );
+    return { ...result, labels: noteLabelsResult, images: imagesWithUrls };
   });
 }
 
@@ -117,7 +164,7 @@ export async function softDeleteNote(id: number, userId: string) {
     .returning();
   if (!result) throw new Error("Failed to delete note");
   const noteLabelsResult = await getNoteLabelsById(result.id);
-  return { ...result, labels: noteLabelsResult };
+  return { ...result, labels: noteLabelsResult, images: [] };
 }
 
 export async function restoreNote(id: number, userId: string) {
@@ -130,10 +177,18 @@ export async function restoreNote(id: number, userId: string) {
     .returning();
   if (!result) throw new Error("Failed to restore note");
   const noteLabelsResult = await getNoteLabelsById(result.id);
-  return { ...result, labels: noteLabelsResult };
+  return { ...result, labels: noteLabelsResult, images: [] };
 }
 
 export async function permanentDeleteNote(id: number, userId: string) {
+  const images = await getNoteImagesByNoteId(id);
+  const storage = getStorage();
+  if (storage) {
+    await Promise.allSettled(
+      images.map((img) => storage.delete(img.key)),
+    );
+  }
+
   const [result] = await db
     .delete(notesTable)
     .where(
@@ -141,7 +196,7 @@ export async function permanentDeleteNote(id: number, userId: string) {
     )
     .returning();
   if (!result) throw new Error("Failed to permanently delete note");
-  return { ...result, labels: [] };
+  return { ...result, labels: [], images: [] };
 }
 
 export async function reorderNotes(
@@ -218,4 +273,80 @@ async function attachLabels(notesList: (typeof notesTable.$inferSelect)[]) {
       .filter((nl) => nl.note_labels.noteId === note.id)
       .map((nl) => ({ id: nl.labels.id, name: nl.labels.name })),
   }));
+}
+
+export async function createNoteImage(image: NewNoteImage) {
+  const [result] = await db.insert(noteImages).values(image).returning();
+  return result;
+}
+
+export async function getNoteImages(noteId: number) {
+  return db
+    .select()
+    .from(noteImages)
+    .where(eq(noteImages.noteId, noteId))
+    .orderBy(noteImages.createdAt);
+}
+
+export async function getNoteImageById(id: number) {
+  const [result] = await db
+    .select()
+    .from(noteImages)
+    .where(eq(noteImages.id, id));
+  return result;
+}
+
+export async function deleteNoteImageRecord(id: number) {
+  const [result] = await db
+    .delete(noteImages)
+    .where(eq(noteImages.id, id))
+    .returning();
+  return result;
+}
+
+export async function getNoteImagesByNoteId(noteId: number) {
+  return db
+    .select()
+    .from(noteImages)
+    .where(eq(noteImages.noteId, noteId));
+}
+
+async function attachImages(notesList: any[]) {
+  if (notesList.length === 0) return [];
+
+  const ids = notesList.map((n: any) => n.id);
+  const allImages = await db
+    .select()
+    .from(noteImages)
+    .where(inArray(noteImages.noteId, ids));
+
+  const storage = getStorage();
+  const notesWithImages = await Promise.all(
+    notesList.map(async (note: any) => {
+      const images = allImages.filter((img) => img.noteId === note.id);
+      const imagesWithUrls = await Promise.all(
+        images.map(async (img) => {
+          const presignedUrl = storage
+            ? await storage.getSignedUrl(img.key)
+            : "";
+          return {
+            id: img.id,
+            noteId: img.noteId,
+            key: img.key,
+            filename: img.filename,
+            mimeType: img.mimeType,
+            size: img.size,
+            width: img.width,
+            height: img.height,
+            presignedUrl,
+            createdAt: img.createdAt,
+            updatedAt: img.updatedAt,
+          };
+        }),
+      );
+      return { ...note, images: imagesWithUrls };
+    }),
+  );
+
+  return notesWithImages;
 }

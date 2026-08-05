@@ -62,6 +62,26 @@ export function NoteCard({
 			{note.isPinned && (
 				<PinIcon className="absolute right-2 top-2 size-4 rotate-45 opacity-60" />
 			)}
+			{note.images && note.images.length > 0 && (
+				<div className="w-full columns-2 gap-2 overflow-hidden rounded-t-lg p-2 pb-0">
+					{note.images.map((image) => (
+						<img
+							key={image.id}
+							src={image.presignedUrl}
+							alt={image.filename}
+							className="mb-2 max-h-40 w-full break-inside-avoid rounded-md object-contain"
+							loading="lazy"
+							style={
+								image.width && image.height
+									? {
+											aspectRatio: `${image.width} / ${image.height}`,
+										}
+									: undefined
+							}
+						/>
+					))}
+				</div>
+			)}
 			<div className="p-4 pb-2">
 				{note.title && (
 					<h3 className="mb-1 text-sm font-semibold leading-snug">

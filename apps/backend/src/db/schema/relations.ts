@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { user, session, account } from "./auth";
+import { noteImages } from "./note-images";
 import { notesTable } from "./notes";
 import { labels, noteLabels } from "./labels";
 
@@ -30,6 +31,14 @@ export const notesRelations = relations(notesTable, ({ one, many }) => ({
     references: [user.id],
   }),
   noteLabels: many(noteLabels),
+  noteImages: many(noteImages),
+}));
+
+export const noteImagesRelations = relations(noteImages, ({ one }) => ({
+  note: one(notesTable, {
+    fields: [noteImages.noteId],
+    references: [notesTable.id],
+  }),
 }));
 
 export const labelsRelations = relations(labels, ({ one, many }) => ({
