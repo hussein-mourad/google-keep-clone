@@ -27,7 +27,7 @@ services:
       - 3903:3903
     volumes:
       - s3_data:/var/lib/garage
-      - ./apps/backend/garage/garage.toml:/etc/garage.toml:ro
+      - ./config/garage/garage.toml:/etc/garage.toml:ro
     command: ["/garage", "-c", "/etc/garage.toml", "server"]
 
   # app:
