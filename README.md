@@ -36,7 +36,7 @@
 | Auth        | better-auth (email + OAuth)                 |
 | Storage     | S3-compatible (via AWS SDK)                 |
 | Linting     | Biome                                       |
-| Testing     | Vitest                                      |
+| Testing     | Vitest, Playwright (e2e)                    |
 
 ## Getting Started
 
@@ -99,9 +99,23 @@ apps/
 
 ## Testing
 
+Unit and component tests use Vitest; end-to-end tests use Playwright.
+
 ```bash
+# Unit + component tests (frontend or backend)
 bun run test
+
+# End-to-end tests (Playwright, starts backend + frontend automatically)
+bun run test:e2e
+
+# Playwright UI mode
+bun run test:e2e:ui
+
+# Install Playwright browsers
+bun run test:e2e:install
 ```
+
+> Playwright runs against your system `chromium`/`firefox` binaries — install skipped via symlinked cache entries (see `playwright.config.ts` `executablePath`).
 
 ## AI-Assisted Workflow
 
