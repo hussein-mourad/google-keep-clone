@@ -1,6 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
 	ArchiveIcon,
+	ImageIcon,
+	Loader2Icon,
 	PaletteIcon,
 	TagIcon,
 	Trash2Icon,
@@ -8,7 +10,10 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { deleteNoteImage, uploadNoteImage } from "../api";
+import type { NoteImage } from "../types";
 import { LabelPicker } from "./label-picker";
 
 const noteSchema = z.object({
@@ -35,6 +40,8 @@ interface NoteFormProps {
 	initialContent?: string;
 	initialLabelIds?: number[];
 	initialColor?: string | null;
+	initialImages?: NoteImage[];
+	noteId?: number;
 	onSubmit: (data: {
 		title: string;
 		content: string;
@@ -52,6 +59,8 @@ export function NoteForm({
 	initialContent = "",
 	initialLabelIds = [],
 	initialColor = null,
+	initialImages = [],
+	noteId,
 	onSubmit,
 	onDelete,
 	onArchive,
@@ -63,10 +72,16 @@ export function NoteForm({
 	const [selectedColor, setSelectedColor] = useState<string | null>(
 		initialColor,
 	);
+	const [images, setImages] = useState<NoteImage[]>(initialImages);
+	const [uploadingImages, setUploadingImages] = useState<Set<number>>(
+		new Set(),
+	);
 	const [saving, setSaving] = useState(false);
 	const [showColorPicker, setShowColorPicker] = useState(false);
 	const [showLabelPicker, setShowLabelPicker] = useState(false);
+	const [isDragOver, setIsDragOver] = useState(false);
 	const titleRef = useRef<HTMLInputElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const {
 		register,
@@ -81,6 +96,59 @@ export function NoteForm({
 	useEffect(() => {
 		titleRef.current?.focus();
 	}, []);
+
+	async function handleFileSelect(files: FileList | null) {
+		if (!files || !noteId) return;
+		const file = files[0];
+		if (!file) return;
+
+		const tempId = Date.now();
+		setUploadingImages((prev) => new Set(prev).add(tempId));
+		try {
+			const uploaded = await uploadNoteImage(noteId, file);
+			setImages((prev) => [...prev, uploaded]);
+		} catch {
+			toast.error("Failed to upload image");
+		} finally {
+			setUploadingImages((prev) => {
+				const next = new Set(prev);
+				next.delete(tempId);
+				return next;
+			});
+		}
+
+		if (fileInputRef.current) {
+			fileInputRef.current.value = "";
+		}
+	}
+
+	async function handleRemoveImage(imageId: number) {
+		try {
+			await deleteNoteImage(imageId);
+			setImages((prev) => prev.filter((img) => img.id !== imageId));
+		} catch {
+			toast.error("Failed to delete image");
+		}
+	}
+
+	function handleDragOver(e: React.DragEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		setIsDragOver(true);
+	}
+
+	function handleDragLeave(e: React.DragEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		setIsDragOver(false);
+	}
+
+	function handleDrop(e: React.DragEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		setIsDragOver(false);
+		handleFileSelect(e.dataTransfer.files);
+	}
 
 	async function handleClose() {
 		const { title = "", content = "" } = getValues();
@@ -116,14 +184,25 @@ export function NoteForm({
 	}
 
 	return (
-		<div
-			className="flex flex-col"
+		<section
+			aria-label="Note editor with image upload"
+			className={`flex flex-col ${isDragOver ? "ring-2 ring-primary" : ""}`}
+			onDragOver={handleDragOver}
+			onDragLeave={handleDragLeave}
+			onDrop={handleDrop}
 			style={
 				selectedColor
 					? { backgroundColor: selectedColor, color: "#202124" }
 					: undefined
 			}
 		>
+			<input
+				ref={fileInputRef}
+				type="file"
+				accept="image/jpeg,image/png,image/gif,image/webp"
+				className="hidden"
+				onChange={(e) => handleFileSelect(e.target.files)}
+			/>
 			<form onSubmit={handleSubmit(handleClose)}>
 				<div className="flex items-center justify-between px-4 pt-3 pb-1">
 					<button
@@ -172,6 +251,36 @@ export function NoteForm({
 						{...register("content")}
 					/>
 				</div>
+
+				{images.length > 0 && (
+					<div className="grid grid-cols-2 gap-2 px-4 pb-2">
+						{images.map((image) => (
+							<div key={image.id} className="group relative">
+								<img
+									src={image.presignedUrl}
+									alt={image.filename}
+									className="h-32 w-full rounded-md object-cover"
+									loading="lazy"
+								/>
+								<button
+									type="button"
+									onClick={() => handleRemoveImage(image.id)}
+									className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
+									title="Remove image"
+								>
+									<Trash2Icon className="size-3" />
+								</button>
+							</div>
+						))}
+					</div>
+				)}
+
+				{uploadingImages.size > 0 && (
+					<div className="flex items-center gap-2 px-4 pb-2">
+						<Loader2Icon className="size-4 animate-spin" />
+						<span className="text-xs text-muted-foreground">Uploading...</span>
+					</div>
+				)}
 
 				{showLabelPicker && (
 					<div className="border-t px-4 py-3">
@@ -234,6 +343,18 @@ export function NoteForm({
 						>
 							<TagIcon className="size-4" />
 						</button>
+						{noteId && (
+							<button
+								type="button"
+								onClick={() => fileInputRef.current?.click()}
+								className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-current/10 ${
+									selectedColor ? "text-[#5f6368]" : "text-muted-foreground"
+								}`}
+								title="Add image"
+							>
+								<ImageIcon className="size-4" />
+							</button>
+						)}
 					</div>
 					<div className="flex items-center gap-0.5">
 						{onArchive && (
@@ -263,6 +384,6 @@ export function NoteForm({
 					</div>
 				</div>
 			</form>
-		</div>
+		</section>
 	);
 }

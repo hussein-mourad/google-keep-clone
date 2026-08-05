@@ -82,9 +82,10 @@ export function NotesPage() {
 		labelIds: number[];
 		color: string | null;
 		isPinned?: boolean;
-	}) {
-		await createNote(note);
+	}): Promise<Note> {
+		const created = await createNote(note);
 		await loadNotes();
+		return created;
 	}
 
 	async function handleUpdate(

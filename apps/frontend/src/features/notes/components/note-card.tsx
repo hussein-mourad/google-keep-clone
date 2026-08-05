@@ -1,6 +1,7 @@
 import {
 	ArchiveIcon,
 	ArchiveRestoreIcon,
+	ImageIcon,
 	PinIcon,
 	Trash2Icon,
 	Undo2Icon,
@@ -61,6 +62,22 @@ export function NoteCard({
 		>
 			{note.isPinned && (
 				<PinIcon className="absolute right-2 top-2 size-4 rotate-45 opacity-60" />
+			)}
+			{note.images && note.images.length > 0 && (
+				<div className="w-full overflow-hidden rounded-t-lg">
+					<img
+						src={note.images[0].presignedUrl}
+						alt={note.images[0].filename}
+						className="h-40 w-full object-cover"
+						loading="lazy"
+					/>
+					{note.images.length > 1 && (
+						<div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white">
+							<ImageIcon className="size-3" />
+							<span>{note.images.length}</span>
+						</div>
+					)}
+				</div>
 			)}
 			<div className="p-4 pb-2">
 				{note.title && (

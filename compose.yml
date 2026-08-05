@@ -18,6 +18,18 @@ services:
       - db:/var/lib/postgresql/data
     ports:
       - 5432:5432
+
+  s3:
+    image: dxflrs/garage:v2.3.0
+    restart: always
+    ports:
+      - 3900:3900
+      - 3903:3903
+    volumes:
+      - s3_data:/var/lib/garage
+      - ./apps/backend/garage/garage.toml:/etc/garage.toml:ro
+    command: ["/garage", "-c", "/etc/garage.toml", "server"]
+
   # app:
   #   build: .
   #   ports:
@@ -49,6 +61,7 @@ services:
 
 volumes:
   db:
+  s3_data:
   # pgadmin:
 # networks:
 #   pgadmin:

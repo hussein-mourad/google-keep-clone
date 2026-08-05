@@ -14,6 +14,7 @@ vi.mock("lucide-react", () => ({
 	ArchiveRestoreIcon: (props: any) => (
 		<svg data-testid="archive-restore-icon" {...props} />
 	),
+	ImageIcon: (props: any) => <svg data-testid="image-icon" {...props} />,
 	Trash2Icon: (props: any) => <svg data-testid="trash-icon" {...props} />,
 	Undo2Icon: (props: any) => <svg data-testid="undo-icon" {...props} />,
 }));
@@ -28,6 +29,7 @@ const baseNote: Note = {
 	isDeleted: false,
 	deletedAt: null,
 	labels: [],
+	images: [],
 	createdAt: "2025-01-01T00:00:00Z",
 	updatedAt: "2025-01-01T00:00:00Z",
 };

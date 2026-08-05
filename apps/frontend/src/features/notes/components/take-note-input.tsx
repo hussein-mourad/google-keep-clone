@@ -1,8 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PaletteIcon, PinIcon, TagIcon } from "lucide-react";
+import {
+	ImageIcon,
+	Loader2Icon,
+	PaletteIcon,
+	PinIcon,
+	TagIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import { uploadNoteImage } from "../api";
+import type { Note } from "../types";
 import { LabelPicker } from "./label-picker";
 
 const noteSchema = z.object({
@@ -31,7 +40,7 @@ interface TakeNoteInputProps {
 		labelIds: number[];
 		color: string | null;
 		isPinned?: boolean;
-	}) => Promise<void>;
+	}) => Promise<Note>;
 }
 
 export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
@@ -42,8 +51,11 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 	const [showColorPicker, setShowColorPicker] = useState(false);
 	const [showLabelPicker, setShowLabelPicker] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
+	const [uploading, setUploading] = useState(false);
+	const [noteId, setNoteId] = useState<number | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const titleRef = useRef<HTMLInputElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const { register, handleSubmit, reset } = useForm<NoteFormData>({
 		resolver: zodResolver(noteSchema),
@@ -64,16 +76,47 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 			return;
 		}
 		setSubmitting(true);
-		await onSubmit({
+		const created = await onSubmit({
 			title,
 			content,
 			labelIds: selectedLabelIds,
 			color: selectedColor,
 			isPinned,
 		});
+		setNoteId(created.id);
 		setSubmitting(false);
 		collapse();
 	};
+
+	async function handleFileSelect(files: FileList | null) {
+		const file = files?.[0];
+		if (!file) return;
+
+		setUploading(true);
+		try {
+			const nid = noteId ?? (await submitAndGetNoteId());
+			await uploadNoteImage(nid, file);
+		} catch {
+			toast.error("Failed to upload image");
+		} finally {
+			setUploading(false);
+			if (fileInputRef.current) fileInputRef.current.value = "";
+		}
+	}
+
+	async function submitAndGetNoteId(): Promise<number> {
+		const { title, content } = getValues();
+		if (!title?.trim() && !content?.trim()) throw new Error("No content");
+		const created = await onSubmit({
+			title: title?.trim() || "Untitled",
+			content: content?.trim() || "",
+			labelIds: selectedLabelIds,
+			color: selectedColor,
+			isPinned,
+		});
+		setNoteId(created.id);
+		return created.id;
+	}
 
 	function collapse() {
 		setExpanded(false);
@@ -82,6 +125,7 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 		setIsPinned(false);
 		setShowColorPicker(false);
 		setShowLabelPicker(false);
+		setNoteId(null);
 		reset({ title: "", content: "" });
 	}
 
@@ -167,6 +211,13 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 						/>
 					</div>
 					<div className="px-4 pb-3">
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="image/jpeg,image/png,image/gif,image/webp"
+							className="hidden"
+							onChange={(e) => handleFileSelect(e.target.files)}
+						/>
 						<textarea
 							placeholder="Take a note..."
 							className={`w-full resize-none bg-transparent text-sm outline-none ${
@@ -187,6 +238,15 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 								selectedIds={selectedLabelIds}
 								onChange={setSelectedLabelIds}
 							/>
+						</div>
+					)}
+
+					{uploading && (
+						<div className="flex items-center gap-2 px-4 pb-2">
+							<Loader2Icon className="size-4 animate-spin" />
+							<span className="text-xs text-muted-foreground">
+								Uploading...
+							</span>
 						</div>
 					)}
 
@@ -257,6 +317,17 @@ export function TakeNoteInput({ onSubmit }: TakeNoteInputProps) {
 								title="Add label"
 							>
 								<TagIcon className="size-4" />
+							</button>
+							<button
+								type="button"
+								onClick={() => fileInputRef.current?.click()}
+								disabled={uploading}
+								className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-current/10 disabled:opacity-50 ${
+									selectedColor ? "text-[#5f6368]" : "text-muted-foreground"
+								}`}
+								title="Add image"
+							>
+								<ImageIcon className="size-4" />
 							</button>
 						</div>
 						<div className="flex items-center gap-1">

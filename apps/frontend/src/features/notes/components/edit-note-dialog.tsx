@@ -69,6 +69,8 @@ export function EditNoteDialog({
 							initialContent={note.content}
 							initialLabelIds={note.labels?.map((l) => l.id) ?? []}
 							initialColor={note.color}
+							initialImages={note.images ?? []}
+							noteId={note.id}
 							onSubmit={async (data) => {
 								await onUpdate(note.id, data);
 							}}
