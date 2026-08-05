@@ -11,7 +11,7 @@ import {
 	trashNote,
 	updateNote,
 } from "#/features/notes/api";
-import type { Note } from "#/features/notes/types";
+import type { Note, NoteChecklistItem } from "#/features/notes/types";
 import { authClient } from "#/lib/auth-client";
 import { AppSidebar } from "../components/app-sidebar";
 import { EditNoteDialog } from "../components/edit-note-dialog";
@@ -82,6 +82,8 @@ export function NotesPage() {
 		labelIds: number[];
 		color: string | null;
 		isPinned?: boolean;
+		isChecklist?: boolean;
+		checklist?: NoteChecklistItem[];
 	}): Promise<Note> {
 		const created = await createNote(note);
 		await loadNotes();
@@ -96,6 +98,8 @@ export function NotesPage() {
 			labelIds: number[];
 			color: string | null;
 			isPinned?: boolean;
+			isChecklist?: boolean;
+			checklist?: NoteChecklistItem[];
 		},
 	) {
 		await updateNote(id, note);

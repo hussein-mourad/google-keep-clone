@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Dialog, DialogContent } from "#/components/ui/dialog";
-import type { Note } from "../types";
+import type { Note, NoteChecklistItem } from "../types";
 import { NoteForm } from "./note-form";
 
 interface EditNoteDialogProps {
@@ -13,6 +13,8 @@ interface EditNoteDialogProps {
 			content: string;
 			labelIds: number[];
 			color: string | null;
+			isChecklist: boolean;
+			checklist: NoteChecklistItem[];
 		},
 	) => Promise<void>;
 	onDelete: (id: number) => Promise<void>;
@@ -28,14 +30,27 @@ export function EditNoteDialog({
 }: EditNoteDialogProps) {
 	const [confirmDelete, setConfirmDelete] = useState(false);
 	const [deleting, setDeleting] = useState(false);
-	const formCloseRef = useRef<() => void>();
+	const formCloseRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
 	const open = !!note;
 
-	const handleOpenChange = (open: boolean) => {
-		if (!open) {
-			onOpenChange(false);
+	const handleOpenChange = (
+		open: boolean,
+		eventDetails?: {
+			reason?: string;
+		},
+	) => {
+		if (open) return;
+		const reason = eventDetails?.reason;
+		// Save-and-close (not bare close) when dismissed by clicking away or Escape,
+		// so unsaved note/checklist edits are persisted. The parent closes the dialog
+		// once the save completes, letting Base UI unmount popup + backdrop normally.
+		if (reason === "outside-press" || reason === "escape-key") {
+			// If the save fails, the form's close handler keeps the dialog open.
+			void formCloseRef.current?.().catch(() => {});
+			return;
 		}
+		onOpenChange(false);
 	};
 
 	const handleDelete = async () => {
@@ -52,15 +67,6 @@ export function EditNoteDialog({
 				<DialogContent
 					className="gap-0 overflow-hidden p-0 sm:max-w-xl"
 					showCloseButton={false}
-					onInteractOutside={(e) => {
-						e.preventDefault();
-					}}
-					onKeyDown={(e) => {
-						if (e.key === "Escape") {
-							e.preventDefault();
-							formCloseRef.current?.();
-						}
-					}}
 				>
 					{note && (
 						<NoteForm
@@ -70,6 +76,8 @@ export function EditNoteDialog({
 							initialLabelIds={note.labels?.map((l) => l.id) ?? []}
 							initialColor={note.color}
 							initialImages={note.images ?? []}
+							initialIsChecklist={note.isChecklist}
+							initialChecklist={note.checklist ?? []}
 							noteId={note.id}
 							onSubmit={async (data) => {
 								await onUpdate(note.id, data);

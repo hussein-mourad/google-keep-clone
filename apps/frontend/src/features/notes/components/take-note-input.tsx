@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
 	ImageIcon,
+	ListChecksIcon,
 	Loader2Icon,
 	PaletteIcon,
 	PinIcon,
@@ -12,7 +13,9 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { deleteNoteImage, permanentDeleteNote, uploadNoteImage } from "../api";
-import type { Note, NoteImage } from "../types";
+import { contentToItems, itemsToContent } from "../checklist-utils";
+import type { Note, NoteChecklistItem, NoteImage } from "../types";
+import { ChecklistEditor } from "./checklist-editor";
 import { LabelPicker } from "./label-picker";
 
 const noteSchema = z.object({
@@ -43,6 +46,8 @@ interface TakeNoteInputProps {
 		labelIds: number[];
 		color: string | null;
 		isPinned?: boolean;
+		isChecklist?: boolean;
+		checklist?: NoteChecklistItem[];
 	}) => Promise<Note>;
 	onUpdate: (
 		id: number,
@@ -52,6 +57,8 @@ interface TakeNoteInputProps {
 			labelIds: number[];
 			color: string | null;
 			isPinned?: boolean;
+			isChecklist?: boolean;
+			checklist?: NoteChecklistItem[];
 		},
 	) => Promise<void>;
 }
@@ -65,6 +72,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 	const [showLabelPicker, setShowLabelPicker] = useState(false);
 	const [uploading, setUploading] = useState(false);
 	const [images, setImages] = useState<NoteImage[]>([]);
+	const [isChecklist, setIsChecklist] = useState(false);
+	const [checklist, setChecklist] = useState<NoteChecklistItem[]>([]);
 	const noteIdRef = useRef<number | null>(null);
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const closingRef = useRef(false);
@@ -73,7 +82,7 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 	const titleRef = useRef<HTMLInputElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const { register, handleSubmit, getValues, reset, watch } =
+	const { register, handleSubmit, getValues, reset, watch, setValue } =
 		useForm<NoteFormData>({
 			resolver: zodResolver(noteSchema),
 			defaultValues: { title: "", content: "" },
@@ -81,6 +90,19 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 
 	const watchedTitle = watch("title");
 	const watchedContent = watch("content");
+
+	function toggleChecklist() {
+		if (isChecklist) {
+			setValue("content", itemsToContent(checklist));
+			setChecklist([]);
+			setIsChecklist(false);
+		} else {
+			const { content = "" } = getValues();
+			setChecklist(contentToItems(content));
+			setValue("content", "");
+			setIsChecklist(true);
+		}
+	}
 
 	useEffect(() => {
 		if (expanded && titleRef.current) {
@@ -116,6 +138,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 		selectedColor,
 		isPinned,
 		selectedLabelIds,
+		checklist,
+		isChecklist,
 	]);
 
 	async function flushSave() {
@@ -123,7 +147,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 		const { title, content } = getValues();
 		const t = title?.trim() ?? "";
 		const c = content?.trim() ?? "";
-		if (!t && !c) return;
+		const hasItemText = checklist.some((item) => item.text.trim().length > 0);
+		if (!t && !c && !hasItemText) return;
 		try {
 			if (noteIdRef.current) {
 				await onUpdate(noteIdRef.current, {
@@ -132,6 +157,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 					labelIds: selectedLabelIds,
 					color: selectedColor,
 					isPinned,
+					isChecklist,
+					checklist,
 				});
 			} else {
 				const created = await onSubmit({
@@ -140,6 +167,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 					labelIds: selectedLabelIds,
 					color: selectedColor,
 					isPinned,
+					isChecklist,
+					checklist,
 				});
 				noteIdRef.current = created.id;
 			}
@@ -158,7 +187,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 		const { title, content } = getValues();
 		const t = title?.trim() ?? "";
 		const c = content?.trim() ?? "";
-		const hasData = Boolean(t || c || images.length > 0);
+		const hasItemText = checklist.some((item) => item.text.trim().length > 0);
+		const hasData = Boolean(t || c || hasItemText || images.length > 0);
 		try {
 			if (noteIdRef.current) {
 				if (!hasData) {
@@ -170,6 +200,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 						labelIds: selectedLabelIds,
 						color: selectedColor,
 						isPinned,
+						isChecklist,
+						checklist,
 					});
 				}
 			} else if (hasData) {
@@ -179,6 +211,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 					labelIds: selectedLabelIds,
 					color: selectedColor,
 					isPinned,
+					isChecklist,
+					checklist,
 				});
 			}
 		} catch {
@@ -228,6 +262,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 			labelIds: selectedLabelIds,
 			color: selectedColor,
 			isPinned,
+			isChecklist,
+			checklist,
 		});
 		noteIdRef.current = created.id;
 		return created.id;
@@ -241,6 +277,8 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 		setShowColorPicker(false);
 		setShowLabelPicker(false);
 		setImages([]);
+		setIsChecklist(false);
+		setChecklist([]);
 		noteIdRef.current = null;
 		reset({ title: "", content: "" });
 	}
@@ -345,7 +383,10 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 							}}
 						/>
 					</div>
-					<div className="px-4 pb-3">
+					<fieldset
+						className="m-0 min-w-0 border-0 p-0 px-4 pb-3"
+						onKeyDown={handleKeyDown}
+					>
 						<input
 							ref={fileInputRef}
 							type="file"
@@ -353,18 +394,22 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 							className="hidden"
 							onChange={(e) => handleFileSelect(e.target.files)}
 						/>
-						<textarea
-							placeholder="Take a note..."
-							className={`w-full resize-none bg-transparent text-sm outline-none ${
-								selectedColor
-									? "placeholder:text-[#5f6368]/50"
-									: "placeholder:text-muted-foreground/60"
-							}`}
-							rows={2}
-							{...register("content")}
-							onKeyDown={handleKeyDown}
-						/>
-					</div>
+						{isChecklist ? (
+							<ChecklistEditor items={checklist} onChange={setChecklist} />
+						) : (
+							<textarea
+								placeholder="Take a note..."
+								className={`w-full resize-none bg-transparent text-sm outline-none ${
+									selectedColor
+										? "placeholder:text-[#5f6368]/50"
+										: "placeholder:text-muted-foreground/60"
+								}`}
+								rows={2}
+								{...register("content")}
+								onKeyDown={handleKeyDown}
+							/>
+						)}
+					</fieldset>
 
 					{showLabelPicker && (
 						<div className="border-t px-4 py-3">
@@ -451,6 +496,22 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 								title="Add label"
 							>
 								<TagIcon className="size-4" />
+							</button>
+							<button
+								type="button"
+								onClick={toggleChecklist}
+								className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-current/10 ${
+									isChecklist
+										? selectedColor
+											? "text-[#202124]"
+											: "text-foreground"
+										: selectedColor
+											? "text-[#5f6368]"
+											: "text-muted-foreground"
+								}`}
+								title="Show checkboxes"
+							>
+								<ListChecksIcon className="size-4" />
 							</button>
 							<button
 								type="button"

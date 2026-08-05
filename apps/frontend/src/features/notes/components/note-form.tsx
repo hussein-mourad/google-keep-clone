@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
 	ArchiveIcon,
 	ImageIcon,
+	ListChecksIcon,
 	Loader2Icon,
 	PaletteIcon,
 	TagIcon,
@@ -13,7 +14,9 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { deleteNoteImage, uploadNoteImage } from "../api";
-import type { NoteImage } from "../types";
+import { contentToItems, itemsToContent } from "../checklist-utils";
+import type { NoteChecklistItem, NoteImage } from "../types";
+import { ChecklistEditor } from "./checklist-editor";
 import { LabelPicker } from "./label-picker";
 
 const noteSchema = z.object({
@@ -41,17 +44,21 @@ interface NoteFormProps {
 	initialLabelIds?: number[];
 	initialColor?: string | null;
 	initialImages?: NoteImage[];
+	initialIsChecklist?: boolean;
+	initialChecklist?: NoteChecklistItem[];
 	noteId?: number;
 	onSubmit: (data: {
 		title: string;
 		content: string;
 		labelIds: number[];
 		color: string | null;
+		isChecklist: boolean;
+		checklist: NoteChecklistItem[];
 	}) => Promise<void>;
 	onDelete?: () => Promise<void>;
 	onArchive?: () => Promise<void>;
 	onClose: () => void;
-	closeRef?: React.MutableRefObject<(() => void) | undefined>;
+	closeRef?: React.MutableRefObject<(() => Promise<void>) | undefined>;
 }
 
 export function NoteForm({
@@ -60,6 +67,8 @@ export function NoteForm({
 	initialLabelIds = [],
 	initialColor = null,
 	initialImages = [],
+	initialIsChecklist = false,
+	initialChecklist = [],
 	noteId,
 	onSubmit,
 	onDelete,
@@ -73,6 +82,9 @@ export function NoteForm({
 		initialColor,
 	);
 	const [images, setImages] = useState<NoteImage[]>(initialImages);
+	const [isChecklist, setIsChecklist] = useState(initialIsChecklist);
+	const [checklist, setChecklist] =
+		useState<NoteChecklistItem[]>(initialChecklist);
 	const [uploadingImages, setUploadingImages] = useState<Set<number>>(
 		new Set(),
 	);
@@ -82,16 +94,31 @@ export function NoteForm({
 	const [isDragOver, setIsDragOver] = useState(false);
 	const titleRef = useRef<HTMLInputElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const closingRef = useRef(false);
 
 	const {
 		register,
 		handleSubmit,
 		getValues,
+		setValue,
 		formState: { isSubmitting },
 	} = useForm<NoteFormData>({
 		resolver: zodResolver(noteSchema),
 		defaultValues: { title: initialTitle, content: initialContent },
 	});
+
+	function toggleChecklist() {
+		if (isChecklist) {
+			setValue("content", itemsToContent(checklist));
+			setChecklist([]);
+			setIsChecklist(false);
+		} else {
+			const { content = "" } = getValues();
+			setChecklist(contentToItems(content));
+			setValue("content", "");
+			setIsChecklist(true);
+		}
+	}
 
 	useEffect(() => {
 		titleRef.current?.focus();
@@ -151,10 +178,21 @@ export function NoteForm({
 	}
 
 	async function handleClose() {
+		if (closingRef.current) return;
+		closingRef.current = true;
+		try {
+			await performClose();
+		} finally {
+			closingRef.current = false;
+		}
+	}
+
+	async function performClose() {
 		const { title = "", content = "" } = getValues();
 		const trimmedTitle = title.trim();
 		const trimmedContent = content.trim();
-		if (!trimmedTitle && !trimmedContent) {
+		const hasItemText = checklist.some((item) => item.text.trim().length > 0);
+		if (!trimmedTitle && !trimmedContent && !hasItemText) {
 			onClose();
 			return;
 		}
@@ -162,6 +200,8 @@ export function NoteForm({
 			trimmedTitle === initialTitle &&
 			trimmedContent === initialContent &&
 			selectedColor === initialColor &&
+			isChecklist === initialIsChecklist &&
+			JSON.stringify(checklist) === JSON.stringify(initialChecklist) &&
 			JSON.stringify([...selectedLabelIds].sort()) ===
 				JSON.stringify([...initialLabelIds].sort())
 		) {
@@ -171,9 +211,11 @@ export function NoteForm({
 		setSaving(true);
 		await onSubmit({
 			title: trimmedTitle || initialTitle || "Untitled",
-			content: trimmedContent || initialContent || "",
+			content: isChecklist ? "" : trimmedContent || initialContent || "",
 			labelIds: selectedLabelIds,
 			color: selectedColor,
+			isChecklist,
+			checklist,
 		});
 		setSaving(false);
 		onClose();
@@ -270,16 +312,20 @@ export function NoteForm({
 									e;
 						}}
 					/>
-					<textarea
-						placeholder="Take a note..."
-						className={`w-full resize-none bg-transparent text-sm leading-relaxed outline-none ${
-							selectedColor
-								? "placeholder:text-[#5f6368]/50"
-								: "placeholder:text-muted-foreground/60"
-						}`}
-						style={{ minHeight: "160px" }}
-						{...register("content")}
-					/>
+					{isChecklist ? (
+						<ChecklistEditor items={checklist} onChange={setChecklist} />
+					) : (
+						<textarea
+							placeholder="Take a note..."
+							className={`w-full resize-none bg-transparent text-sm leading-relaxed outline-none ${
+								selectedColor
+									? "placeholder:text-[#5f6368]/50"
+									: "placeholder:text-muted-foreground/60"
+							}`}
+							style={{ minHeight: "160px" }}
+							{...register("content")}
+						/>
+					)}
 				</div>
 
 				{uploadingImages.size > 0 && (
@@ -349,6 +395,22 @@ export function NoteForm({
 							title="Add label"
 						>
 							<TagIcon className="size-4" />
+						</button>
+						<button
+							type="button"
+							onClick={toggleChecklist}
+							className={`flex size-8 items-center justify-center rounded-full transition-colors hover:bg-current/10 ${
+								isChecklist
+									? selectedColor
+										? "text-[#202124]"
+										: "text-foreground"
+									: selectedColor
+										? "text-[#5f6368]"
+										: "text-muted-foreground"
+							}`}
+							title="Show checkboxes"
+						>
+							<ListChecksIcon className="size-4" />
 						</button>
 						{noteId && (
 							<button

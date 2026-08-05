@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { noteImages, type NewNoteImage } from "../../db/schema/note-images";
-import { notesTable, type NewNote } from "../../db/schema/notes";
+import { notesTable, type NewNote, type NoteChecklistItem } from "../../db/schema/notes";
 import { noteLabels, labels } from "../../db/schema/labels";
 import { getStorage } from "../../lib/storage";
 
@@ -29,7 +29,7 @@ export async function getNotes(userId: string, opts: GetNotesOptions = {}) {
 
   if (search) {
     conditions.push(
-      sql`(${ilike(notesTable.title, `%${search}%`)} OR ${ilike(notesTable.content, `%${search}%`)})`,
+      sql`(${ilike(notesTable.title, `%${search}%`)} OR ${ilike(notesTable.content, `%${search}%`)} OR ${notesTable.checklist}::text ilike ${`%${search}%`})`,
     );
   }
 
@@ -110,6 +110,8 @@ export async function updateNote(
     isPinned: boolean;
     color: string | null;
     isArchived: boolean;
+    isChecklist: boolean;
+    checklist: NoteChecklistItem[];
   }>,
   labelIds?: number[],
 ) {

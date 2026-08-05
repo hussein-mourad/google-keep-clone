@@ -1,6 +1,7 @@
 import {
 	ArchiveIcon,
 	ArchiveRestoreIcon,
+	CheckIcon,
 	PinIcon,
 	Trash2Icon,
 	Undo2Icon,
@@ -88,17 +89,65 @@ export function NoteCard({
 						{note.title}
 					</h3>
 				)}
-				{note.content && (
-					<p
-						className={`whitespace-pre-wrap text-sm leading-relaxed ${
-							note.color ? "" : "text-foreground/85"
-						}`}
-					>
-						{preview}
-						{hasMore && "..."}
-					</p>
+				{note.isChecklist && Array.isArray(note.checklist) ? (
+					<ul className="space-y-1">
+						{note.checklist.map((item) => (
+							<li key={item.id} className="flex items-start gap-2">
+								<span
+									aria-hidden="true"
+									className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border ${
+										item.checked
+											? "border-current bg-current text-background"
+											: "border-current/60"
+									}`}
+								>
+									{item.checked && <CheckIcon className="size-2.5" />}
+								</span>
+								<span
+									className={`text-sm leading-relaxed ${
+										item.checked ? "line-through opacity-60" : ""
+									}`}
+								>
+									{item.text}
+								</span>
+							</li>
+						))}
+					</ul>
+				) : (
+					note.content && (
+						<p
+							className={`whitespace-pre-wrap text-sm leading-relaxed ${
+								note.color ? "" : "text-foreground/85"
+							}`}
+						>
+							{preview}
+							{hasMore && "..."}
+						</p>
+					)
 				)}
 			</div>
+			{note.isChecklist &&
+				Array.isArray(note.checklist) &&
+				note.checklist.length > 0 && (
+					<div className="flex items-center gap-2 px-4 pb-2">
+						<div className="h-1.5 flex-1 overflow-hidden rounded-full bg-current/15">
+							<div
+								className="h-full rounded-full bg-current"
+								style={{
+									width: `${Math.round(
+										(note.checklist.filter((item) => item.checked).length /
+											note.checklist.length) *
+											100,
+									)}%`,
+								}}
+							/>
+						</div>
+						<span className="text-[10px] opacity-70">
+							{note.checklist.filter((item) => item.checked).length}/
+							{note.checklist.length}
+						</span>
+					</div>
+				)}
 			{note.labels && note.labels.length > 0 && (
 				<div className="flex flex-wrap gap-1 px-4 pb-2">
 					{note.labels.map((label) => (
