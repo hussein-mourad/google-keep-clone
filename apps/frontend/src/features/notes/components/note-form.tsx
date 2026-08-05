@@ -224,6 +224,36 @@ export function NoteForm({
 						</span>
 					)}
 				</div>
+				{images.length > 0 && (
+					<div className="columns-2 gap-2 px-4 pb-2">
+						{images.map((image) => (
+							<div
+								key={image.id}
+								className="group relative mb-2 break-inside-avoid"
+							>
+								<img
+									src={image.presignedUrl}
+									alt={image.filename}
+									className="max-h-40 w-full rounded-md object-contain"
+									loading="lazy"
+									style={
+										image.width && image.height
+											? { aspectRatio: `${image.width} / ${image.height}` }
+											: undefined
+									}
+								/>
+								<button
+									type="button"
+									onClick={() => handleRemoveImage(image.id)}
+									className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
+									title="Remove image"
+								>
+									<Trash2Icon className="size-3" />
+								</button>
+							</div>
+						))}
+					</div>
+				)}
 				<div className="space-y-1 px-4 pb-2 pt-1">
 					<input
 						placeholder="Title"
@@ -251,29 +281,6 @@ export function NoteForm({
 						{...register("content")}
 					/>
 				</div>
-
-				{images.length > 0 && (
-					<div className="grid grid-cols-2 gap-2 px-4 pb-2">
-						{images.map((image) => (
-							<div key={image.id} className="group relative">
-								<img
-									src={image.presignedUrl}
-									alt={image.filename}
-									className="h-32 w-full rounded-md object-cover"
-									loading="lazy"
-								/>
-								<button
-									type="button"
-									onClick={() => handleRemoveImage(image.id)}
-									className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
-									title="Remove image"
-								>
-									<Trash2Icon className="size-3" />
-								</button>
-							</div>
-						))}
-					</div>
-				)}
 
 				{uploadingImages.size > 0 && (
 					<div className="flex items-center gap-2 px-4 pb-2">

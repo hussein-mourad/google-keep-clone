@@ -94,7 +94,10 @@ function SortableNoteCard({
 		<div
 			ref={setNodeRef}
 			style={style}
-			className={cn("w-full", isDragging && "z-50 shadow-xl")}
+			className={cn(
+				"mb-4 w-full break-inside-avoid",
+				isDragging && "z-50 shadow-xl",
+			)}
 		>
 			<div className="group/drag relative">
 				<button
@@ -172,7 +175,7 @@ function NoteList({
 				{layout === "list" ? (
 					<div className="mx-auto flex max-w-2xl flex-col gap-3">{list}</div>
 				) : (
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					<div className="columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4">
 						{list}
 					</div>
 				)}
