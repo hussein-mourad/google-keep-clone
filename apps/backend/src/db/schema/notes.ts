@@ -1,6 +1,12 @@
-import { boolean, integer, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { withTimestamps } from "./timestamps";
+
+export interface NoteChecklistItem {
+  id: string;
+  text: string;
+  checked: boolean;
+}
 
 export const notesTable = pgTable("notes", {
   id: serial().primaryKey(),
@@ -16,6 +22,12 @@ export const notesTable = pgTable("notes", {
   isDeleted: boolean("is_deleted").default(false).notNull(),
   deletedAt: timestamp("deleted_at"),
   sortOrder: integer("sort_order").default(0).notNull(),
+
+  isChecklist: boolean("is_checklist").default(false).notNull(),
+  checklist: jsonb("checklist")
+    .$type<NoteChecklistItem[]>()
+    .default([])
+    .notNull(),
 
   ...withTimestamps,
 });

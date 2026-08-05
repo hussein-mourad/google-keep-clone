@@ -57,6 +57,13 @@
       "when": 1785065758343,
       "tag": "0007_cool_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785947303129,
+      "tag": "0008_broad_stone_men",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,23 @@
 import type { Request, Response } from "express";
 import * as service from "./service";
 import { getStorage, generateImageKey } from "../../lib/storage";
+import type { NoteChecklistItem } from "../../db/schema/notes";
+
+function normalizeChecklist(checklist: unknown): NoteChecklistItem[] {
+  if (!Array.isArray(checklist)) return [];
+  return checklist
+    .filter(
+      (item): item is Record<string, unknown> =>
+        !!item &&
+        typeof item === "object" &&
+        typeof (item as Record<string, unknown>).text === "string",
+    )
+    .map((item, index) => ({
+      id: typeof item.id === "string" ? item.id : `item-${index}`,
+      text: item.text as string,
+      checked: item.checked === true,
+    }));
+}
 
 export async function getNotes(req: Request, res: Response) {
   try {
@@ -22,9 +39,16 @@ export async function getNotes(req: Request, res: Response) {
 export async function createNote(req: Request, res: Response) {
   try {
     const userId = (req as any).user.id;
-    const { title, content, labelIds, color } = req.body;
+    const { title, content, labelIds, color, isChecklist, checklist } = req.body;
     const note = await service.createNote(
-      { title: title ?? "", content: content ?? "", userId, color: color ?? null },
+      {
+        title: title ?? "",
+        content: content ?? "",
+        userId,
+        color: color ?? null,
+        isChecklist: isChecklist ?? false,
+        checklist: normalizeChecklist(checklist),
+      },
       labelIds,
       userId,
     );
@@ -49,7 +73,7 @@ export async function updateNote(req: Request, res: Response) {
     const { id } = req.params;
     if (!id) return res.status(400).json({ error: "id is required" });
 
-    const { title, content, labelIds, isPinned, color, isArchived } = req.body;
+    const { title, content, labelIds, isPinned, color, isArchived, isChecklist, checklist } = req.body;
     const data: Record<string, unknown> = {};
 
     if (title !== undefined) data.title = title;
@@ -57,6 +81,8 @@ export async function updateNote(req: Request, res: Response) {
     if (isPinned !== undefined) data.isPinned = isPinned;
     if (color !== undefined) data.color = color;
     if (isArchived !== undefined) data.isArchived = isArchived;
+    if (isChecklist !== undefined) data.isChecklist = isChecklist === true;
+    if (checklist !== undefined) data.checklist = normalizeChecklist(checklist);
 
     const existing = await service.getNote(+id, userId);
     if (!existing) return res.status(404).json({ error: "Note not found" });

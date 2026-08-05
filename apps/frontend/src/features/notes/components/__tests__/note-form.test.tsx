@@ -82,4 +82,68 @@ describe("NoteForm", () => {
 		await user.click(screen.getByTitle("Back"));
 		expect(onClose).toHaveBeenCalled();
 	});
+
+	it("converts content to checklist items when toggled on", async () => {
+		const user = userEvent.setup();
+		render(
+			<NoteForm
+				initialContent={"Buy milk\nWalk dog"}
+				onSubmit={vi.fn()}
+				onClose={vi.fn()}
+			/>,
+		);
+
+		await user.click(screen.getByTitle("Show checkboxes"));
+
+		expect(screen.queryByPlaceholderText("Take a note...")).toBeNull();
+		const items = screen.getAllByPlaceholderText("List item");
+		expect(items).toHaveLength(2);
+		expect((items[0] as HTMLInputElement).value).toBe("Buy milk");
+		expect((items[1] as HTMLInputElement).value).toBe("Walk dog");
+	});
+
+	it("converts checklist items back to content when toggled off", async () => {
+		const user = userEvent.setup();
+		render(
+			<NoteForm
+				initialContent={"Buy milk\nWalk dog"}
+				onSubmit={vi.fn()}
+				onClose={vi.fn()}
+			/>,
+		);
+
+		await user.click(screen.getByTitle("Show checkboxes"));
+		await user.click(screen.getByTitle("Show checkboxes"));
+
+		const content = screen.getByPlaceholderText(
+			"Take a note...",
+		) as HTMLTextAreaElement;
+		expect(content.value).toBe("Buy milk\nWalk dog");
+	});
+
+	it("submits checklist data with empty content", async () => {
+		const user = userEvent.setup();
+		const onSubmit = vi.fn().mockResolvedValue(undefined);
+		render(
+			<NoteForm
+				initialContent={"Buy milk\nWalk dog"}
+				onSubmit={onSubmit}
+				onClose={vi.fn()}
+			/>,
+		);
+
+		await user.click(screen.getByTitle("Show checkboxes"));
+		await user.click(screen.getByTitle("Back"));
+
+		expect(onSubmit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				content: "",
+				isChecklist: true,
+				checklist: [
+					expect.objectContaining({ text: "Buy milk", checked: false }),
+					expect.objectContaining({ text: "Walk dog", checked: false }),
+				],
+			}),
+		);
+	});
 });

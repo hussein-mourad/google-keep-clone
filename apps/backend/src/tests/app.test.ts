@@ -136,6 +136,79 @@ describe("notes API", () => {
     assert.equal(res.body.isArchived, true);
   });
 
+  it("POST /api/notes creates a checklist note", async () => {
+    const res = await request(app)
+      .post("/api/notes")
+      .send({
+        title: "Todo",
+        content: "",
+        isChecklist: true,
+        checklist: [
+          { id: "a", text: "Buy milk", checked: false },
+          { id: "b", text: "Walk dog", checked: true },
+        ],
+      })
+      .expect(200);
+
+    assert.equal(res.body.isChecklist, true);
+    assert.equal(res.body.checklist.length, 2);
+    assert.equal(res.body.checklist[0].text, "Buy milk");
+    assert.equal(res.body.checklist[0].checked, false);
+    assert.equal(res.body.checklist[1].checked, true);
+  });
+
+  it("POST /api/notes defaults checklist when omitted", async () => {
+    const res = await request(app)
+      .post("/api/notes")
+      .send({ title: "Plain", content: "Text" })
+      .expect(200);
+
+    assert.equal(res.body.isChecklist, false);
+    assert.deepEqual(res.body.checklist, []);
+  });
+
+  it("PUT /api/notes/:id updates checklist", async () => {
+    const createRes = await request(app)
+      .post("/api/notes")
+      .send({ title: "Check", content: "", isChecklist: true, checklist: [] })
+      .expect(200);
+
+    const res = await request(app)
+      .put(`/api/notes/${createRes.body.id}`)
+      .send({
+        isChecklist: true,
+        checklist: [
+          { id: "c", text: "Milk", checked: true },
+          { id: "d", text: "Bread", checked: false },
+        ],
+      })
+      .expect(200);
+
+    assert.equal(res.body.isChecklist, true);
+    assert.equal(res.body.checklist.length, 2);
+    assert.equal(res.body.checklist[0].checked, true);
+    assert.equal(res.body.checklist[1].text, "Bread");
+  });
+
+  it("GET /api/notes?search= matches checklist item text", async () => {
+    await request(app)
+      .post("/api/notes")
+      .send({
+        title: "Grocery",
+        content: "",
+        isChecklist: true,
+        checklist: [{ id: "e", text: "Buy avocados", checked: false }],
+      })
+      .expect(200);
+
+    const res = await request(app)
+      .get("/api/notes?search=avocados")
+      .expect(200);
+
+    assert.equal(res.body.length, 1);
+    assert.equal(res.body[0].title, "Grocery");
+  });
+
   it("PATCH /api/notes/:id/trash soft-deletes a note", async () => {
     const res = await request(app)
       .patch(`/api/notes/${noteId}/trash`)

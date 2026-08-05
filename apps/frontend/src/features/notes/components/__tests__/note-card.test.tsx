@@ -14,6 +14,7 @@ vi.mock("lucide-react", () => ({
 	ArchiveRestoreIcon: (props: any) => (
 		<svg data-testid="archive-restore-icon" {...props} />
 	),
+	CheckIcon: (props: any) => <svg data-testid="check-icon" {...props} />,
 	ImageIcon: (props: any) => <svg data-testid="image-icon" {...props} />,
 	Trash2Icon: (props: any) => <svg data-testid="trash-icon" {...props} />,
 	Undo2Icon: (props: any) => <svg data-testid="undo-icon" {...props} />,
@@ -28,6 +29,8 @@ const baseNote: Note = {
 	isArchived: false,
 	isDeleted: false,
 	deletedAt: null,
+	isChecklist: false,
+	checklist: [],
 	labels: [],
 	images: [],
 	createdAt: "2025-01-01T00:00:00Z",
@@ -62,6 +65,37 @@ describe("NoteCard", () => {
 			/>,
 		);
 		expect(screen.getByText(/\.\.\.$/)).toBeTruthy();
+	});
+
+	it("renders checklist items with progress for checklist notes", () => {
+		const note = {
+			...baseNote,
+			isChecklist: true,
+			checklist: [
+				{ id: "1", text: "Buy milk", checked: false },
+				{ id: "2", text: "Walk dog", checked: true },
+			],
+		};
+		render(<NoteCard note={note} onClick={vi.fn()} />);
+		expect(screen.getByText("Buy milk")).toBeTruthy();
+		expect(screen.getByText("Walk dog")).toBeTruthy();
+		expect(screen.getByText("1/2")).toBeTruthy();
+	});
+
+	it("strikes through checked checklist items", () => {
+		const note = {
+			...baseNote,
+			isChecklist: true,
+			checklist: [{ id: "1", text: "Done", checked: true }],
+		};
+		render(<NoteCard note={note} onClick={vi.fn()} />);
+		expect(screen.getByText("Done").className).toContain("line-through");
+	});
+
+	it("does not render checklist UI for plain notes", () => {
+		render(<NoteCard note={baseNote} onClick={vi.fn()} />);
+		expect(screen.queryByText("0/0")).toBeNull();
+		expect(screen.queryByTestId("check-icon")).toBeNull();
 	});
 
 	it("renders labels as badges when note has labels", () => {

@@ -5,33 +5,56 @@ import type { Note } from "../../types";
 import { EditNoteDialog } from "../edit-note-dialog";
 
 vi.mock("../note-form", () => ({
-	NoteForm: ({ onSubmit, onDelete }: any) => (
-		<div data-testid="note-form">
-			<button
-				data-testid="form-submit"
-				onClick={() =>
-					onSubmit({
-						title: "Updated",
-						content: "Content",
-						labelIds: [],
-						color: null,
-					})
-				}
-			>
-				submit
-			</button>
-			{onDelete && (
-				<button data-testid="form-delete" onClick={onDelete}>
-					trigger-delete
+	NoteForm: ({ onSubmit, onDelete, closeRef }: any) => {
+		if (closeRef) {
+			closeRef.current = () =>
+				onSubmit({
+					title: "Updated",
+					content: "",
+					labelIds: [],
+					color: null,
+					isChecklist: true,
+					checklist: [{ id: "1", text: "Buy milk", checked: false }],
+				});
+		}
+		return (
+			<div data-testid="note-form">
+				<button
+					data-testid="form-submit"
+					onClick={() =>
+						onSubmit({
+							title: "Updated",
+							content: "Content",
+							labelIds: [],
+							color: null,
+						})
+					}
+				>
+					submit
 				</button>
-			)}
-		</div>
-	),
+				{onDelete && (
+					<button data-testid="form-delete" onClick={onDelete}>
+						trigger-delete
+					</button>
+				)}
+			</div>
+		);
+	},
 }));
 
 vi.mock("#/components/ui/dialog", () => ({
-	Dialog: ({ children, open }: any) =>
-		open ? <div data-testid="dialog">{children}</div> : null,
+	Dialog: ({ children, open, onOpenChange }: any) =>
+		open ? (
+			<div data-testid="dialog">
+				<button
+					data-testid="outside-press"
+					onClick={() => onOpenChange(false, { reason: "outside-press" })}
+				>
+					outside
+				</button>
+				{children}
+			</div>
+		) : null,
 	DialogContent: ({ children }: any) => <div>{children}</div>,
 }));
 
@@ -50,6 +73,8 @@ const testNote: Note = {
 	isArchived: false,
 	isDeleted: false,
 	deletedAt: null,
+	isChecklist: false,
+	checklist: [],
 	labels: [],
 	images: [],
 	createdAt: "2025-01-01T00:00:00Z",
@@ -101,6 +126,29 @@ describe("EditNoteDialog", () => {
 			content: "Content",
 			labelIds: [],
 			color: null,
+		});
+	});
+
+	it("saves note changes when dismissed by clicking outside", async () => {
+		const user = userEvent.setup();
+		const onUpdate = vi.fn().mockResolvedValue(undefined);
+		render(
+			<EditNoteDialog
+				note={testNote}
+				onOpenChange={vi.fn()}
+				onUpdate={onUpdate}
+				onDelete={vi.fn()}
+				onArchive={vi.fn()}
+			/>,
+		);
+		await user.click(screen.getByTestId("outside-press"));
+		expect(onUpdate).toHaveBeenCalledWith(42, {
+			title: "Updated",
+			content: "",
+			labelIds: [],
+			color: null,
+			isChecklist: true,
+			checklist: [{ id: "1", text: "Buy milk", checked: false }],
 		});
 	});
 

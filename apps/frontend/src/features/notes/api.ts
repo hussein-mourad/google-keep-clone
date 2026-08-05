@@ -1,5 +1,5 @@
 import api from "#/lib/api";
-import type { Note, NoteImage } from "./types";
+import type { Note, NoteChecklistItem, NoteImage } from "./types";
 
 export async function getNotes(opts?: {
 	labelId?: number;
@@ -27,6 +27,8 @@ export async function createNote(note: {
 	color?: string | null;
 	labelIds?: number[];
 	isPinned?: boolean;
+	isChecklist?: boolean;
+	checklist?: NoteChecklistItem[];
 }): Promise<Note> {
 	const { data } = await api.post("/api/notes", note);
 	return data;
@@ -41,6 +43,8 @@ export async function updateNote(
 		isArchived?: boolean;
 		color?: string | null;
 		labelIds?: number[];
+		isChecklist?: boolean;
+		checklist?: NoteChecklistItem[];
 	},
 ): Promise<Note> {
 	const { data } = await api.put(`/api/notes/${id}`, note);

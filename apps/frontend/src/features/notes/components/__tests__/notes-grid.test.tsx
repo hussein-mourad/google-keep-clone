@@ -20,6 +20,8 @@ const baseNote: Note = {
 	isArchived: false,
 	isDeleted: false,
 	deletedAt: null,
+	isChecklist: false,
+	checklist: [],
 	labels: [],
 	images: [],
 	createdAt: "2025-01-01T00:00:00Z",

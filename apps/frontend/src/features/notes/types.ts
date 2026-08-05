@@ -14,6 +14,12 @@ export interface NoteImage {
 	updatedAt: string;
 }
 
+export interface NoteChecklistItem {
+	id: string;
+	text: string;
+	checked: boolean;
+}
+
 export interface Note {
 	id: number;
 	title: string;
@@ -23,6 +29,8 @@ export interface Note {
 	isArchived: boolean;
 	isDeleted: boolean;
 	deletedAt: string | null;
+	isChecklist: boolean;
+	checklist: NoteChecklistItem[];
 	labels: Label[];
 	images: NoteImage[];
 	createdAt: string;
