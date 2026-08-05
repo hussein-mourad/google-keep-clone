@@ -138,15 +138,21 @@ export function NotesPage() {
 		await loadNotes();
 	}
 
-	function handleReorder(activeId: number, overId: number) {
-		const idx = notes.findIndex((n) => n.id === activeId);
-		const overIdx = notes.findIndex((n) => n.id === overId);
-		if (idx === -1 || overIdx === -1) return;
-		const next = [...notes];
-		const [moved] = next.splice(idx, 1);
-		next.splice(overIdx, 0, moved);
-		setNotes(next);
-		reorderNotes(next.map((n) => n.id)).catch(() => loadNotes());
+	function handleReorderLive(activeId: number, overId: number) {
+		setNotes((current) => {
+			const idx = current.findIndex((n) => n.id === activeId);
+			const overIdx = current.findIndex((n) => n.id === overId);
+			if (idx === -1 || overIdx === -1 || idx === overIdx) return current;
+			const next = [...current];
+			const [moved] = next.splice(idx, 1);
+			next.splice(overIdx, 0, moved);
+			return next;
+		});
+	}
+
+	function handleReorder() {
+		// The order was already applied live during the drag; persist the result.
+		reorderNotes(notes.map((n) => n.id)).catch(() => loadNotes());
 	}
 
 	return (
@@ -195,6 +201,7 @@ export function NotesPage() {
 									onRestore={handleRestore}
 									onPermanentDelete={handlePermanentDelete}
 									onReorder={handleReorder}
+									onReorderLive={handleReorderLive}
 									view={view}
 									layout={layout}
 								/>

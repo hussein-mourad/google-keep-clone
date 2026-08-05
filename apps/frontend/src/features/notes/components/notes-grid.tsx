@@ -2,6 +2,9 @@ import {
 	closestCenter,
 	DndContext,
 	type DragEndEvent,
+	type DragOverEvent,
+	DragOverlay,
+	type DragStartEvent,
 	KeyboardSensor,
 	PointerSensor,
 	useSensor,
@@ -15,7 +18,7 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVerticalIcon } from "lucide-react";
+import { useState } from "react";
 import { cn } from "#/lib/utils";
 import type { Note } from "../types";
 import { NoteCard } from "./note-card";
@@ -29,6 +32,7 @@ interface NotesGridProps {
 	onRestore?: (note: Note) => void;
 	onPermanentDelete?: (note: Note) => void;
 	onReorder?: (activeId: number, overId: number) => void;
+	onReorderLive?: (activeId: number, overId: number) => void;
 	view?: "notes" | "archived" | "trash";
 	layout?: "grid" | "list";
 }
@@ -83,10 +87,16 @@ function SortableNoteCard({
 		transform,
 		transition,
 		isDragging,
-	} = useSortable({ id: note.id });
+	} = useSortable({
+		id: note.id,
+		transition: {
+			duration: 150,
+			easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+		},
+	});
 
 	const style = {
-		transform: CSS.Transform.toString(transform),
+		transform: CSS.Translate.toString(transform),
 		transition,
 	};
 
@@ -96,29 +106,21 @@ function SortableNoteCard({
 			style={style}
 			className={cn(
 				"mb-4 w-full break-inside-avoid",
-				isDragging && "z-50 shadow-xl",
+				isDragging && "opacity-0",
 			)}
+			{...attributes}
+			{...listeners}
 		>
-			<div className="group/drag relative">
-				<button
-					type="button"
-					className="absolute -left-1 top-1/2 z-10 -translate-y-1/2 cursor-grab rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-foreground/10 active:cursor-grabbing group-hover/drag:opacity-100"
-					{...attributes}
-					{...listeners}
-				>
-					<GripVerticalIcon className="size-4" />
-				</button>
-				<NoteCard
-					note={note}
-					onClick={onClick}
-					onTogglePin={onTogglePin}
-					onArchive={onArchive}
-					onTrash={onTrash}
-					onRestore={onRestore}
-					onPermanentDelete={onPermanentDelete}
-					view={view}
-				/>
-			</div>
+			<NoteCard
+				note={note}
+				onClick={onClick}
+				onTogglePin={onTogglePin}
+				onArchive={onArchive}
+				onTrash={onTrash}
+				onRestore={onRestore}
+				onPermanentDelete={onPermanentDelete}
+				view={view}
+			/>
 		</div>
 	);
 }
@@ -132,9 +134,11 @@ function NoteList({
 	onRestore,
 	onPermanentDelete,
 	onReorder,
+	onReorderLive,
 	view,
 	layout,
 }: NotesGridProps) {
+	const [activeId, setActiveId] = useState<number | null>(null);
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
 		useSensor(KeyboardSensor, {
@@ -145,7 +149,19 @@ function NoteList({
 	const strategy =
 		layout === "list" ? verticalListSortingStrategy : rectSortingStrategy;
 
+	function handleDragStart(event: DragStartEvent) {
+		setActiveId(event.active.id as number);
+	}
+
+	function handleDragOver(event: DragOverEvent) {
+		const { active, over } = event;
+		if (!over || active.id === over.id || !onReorderLive) return;
+		// Reorder live during drag so CSS columns reflow naturally (smooth masonry).
+		onReorderLive(active.id as number, over.id as number);
+	}
+
 	function handleDragEnd(event: DragEndEvent) {
+		setActiveId(null);
 		const { active, over } = event;
 		if (!over || active.id === over.id || !onReorder) return;
 		onReorder(active.id as number, over.id as number);
@@ -165,10 +181,14 @@ function NoteList({
 		/>
 	));
 
+	const activeNote = notes.find((n) => n.id === activeId) ?? null;
+
 	return (
 		<DndContext
 			sensors={sensors}
 			collisionDetection={closestCenter}
+			onDragStart={handleDragStart}
+			onDragOver={handleDragOver}
 			onDragEnd={handleDragEnd}
 		>
 			<SortableContext items={notes.map((n) => n.id)} strategy={strategy}>
@@ -180,6 +200,22 @@ function NoteList({
 					</div>
 				)}
 			</SortableContext>
+			<DragOverlay dropAnimation={null}>
+				{activeNote && (
+					<div className="pointer-events-none">
+						<NoteCard
+							note={activeNote}
+							onClick={() => {}}
+							onTogglePin={onTogglePin}
+							onArchive={onArchive}
+							onTrash={onTrash}
+							onRestore={onRestore}
+							onPermanentDelete={onPermanentDelete}
+							view={view}
+						/>
+					</div>
+				)}
+			</DragOverlay>
 		</DndContext>
 	);
 }
