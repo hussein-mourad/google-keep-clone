@@ -1,168 +1,123 @@
 import type { Request, Response } from "express";
+import { AppError } from "../../lib/http-error";
+import { generateImageKey, getStorage } from "../../lib/storage";
+import { pickDefined } from "../../lib/validate";
+import { getUserId } from "../auth/middleware";
+import type {
+  CreateNoteBody,
+  GetNotesQuery,
+  ReorderNotesBody,
+  UpdateNoteBody,
+} from "./schemas";
 import * as service from "./service";
-import { getStorage, generateImageKey } from "../../lib/storage";
-import type { NoteChecklistItem } from "../../db/schema/notes";
-
-function normalizeChecklist(checklist: unknown): NoteChecklistItem[] {
-  if (!Array.isArray(checklist)) return [];
-  return checklist
-    .filter(
-      (item): item is Record<string, unknown> =>
-        !!item &&
-        typeof item === "object" &&
-        typeof (item as Record<string, unknown>).text === "string",
-    )
-    .map((item, index) => ({
-      id: typeof item.id === "string" ? item.id : `item-${index}`,
-      text: item.text as string,
-      checked: item.checked === true,
-    }));
-}
 
 export async function getNotes(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user.id;
-    const raw = req.query.labelId;
-    const labelId =
-      raw && !Number.isNaN(Number(raw)) ? Number(raw) : undefined;
-    const search = req.query.search as string | undefined;
-    const archived = req.query.archived === "true";
-    const trash = req.query.trash === "true";
-
-    const notes = await service.getNotes(userId, { labelId, search, archived, trash });
-    res.json(notes);
-  } catch (error) {
-    return res.status(500).json({ error });
-  }
+  const userId = getUserId(req);
+  const query = req.query as unknown as GetNotesQuery;
+  const notes = await service.getNotes(userId, query);
+  res.json(notes);
 }
 
 export async function createNote(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user.id;
-    const { title, content, labelIds, color, isChecklist, checklist } = req.body;
-    const note = await service.createNote(
-      {
-        title: title ?? "",
-        content: content ?? "",
-        userId,
-        color: color ?? null,
-        isChecklist: isChecklist ?? false,
-        checklist: normalizeChecklist(checklist),
-      },
-      labelIds,
+  const userId = getUserId(req);
+  const body = req.body as CreateNoteBody;
+  const note = await service.createNote(
+    {
+      title: body.title,
+      content: body.content,
       userId,
-    );
-    res.json(note);
-  } catch (error) {
-    res.status(400).json({ error: "Failed to create note" });
-  }
+      color: body.color,
+      isChecklist: body.isChecklist,
+      checklist: body.checklist,
+    },
+    body.labelIds,
+    userId,
+  );
+  res.json(note);
 }
 
 export async function getNote(req: Request, res: Response) {
-  const userId = (req as any).user.id;
-  const { id } = req.params;
-  if (!id) return res.status(400).json({ error: "id is required" });
-  const note = await service.getNote(+id, userId);
-  if (!note) return res.status(404).json({ error: "Note not found" });
+  const userId = getUserId(req);
+  const id = Number(req.params.id);
+  const note = await service.getNote(id, userId);
+  if (!note) throw new AppError(404, "NOT_FOUND", "Note not found");
   res.json(note);
 }
 
 export async function updateNote(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user.id;
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ error: "id is required" });
+  const userId = getUserId(req);
+  const id = Number(req.params.id);
+  const body = req.body as UpdateNoteBody;
 
-    const { title, content, labelIds, isPinned, color, isArchived, isChecklist, checklist } = req.body;
-    const data: Record<string, unknown> = {};
-
-    if (title !== undefined) data.title = title;
-    if (content !== undefined) data.content = content;
-    if (isPinned !== undefined) data.isPinned = isPinned;
-    if (color !== undefined) data.color = color;
-    if (isArchived !== undefined) data.isArchived = isArchived;
-    if (isChecklist !== undefined) data.isChecklist = isChecklist === true;
-    if (checklist !== undefined) data.checklist = normalizeChecklist(checklist);
-
-    const existing = await service.getNote(+id, userId);
-    if (!existing) return res.status(404).json({ error: "Note not found" });
-    if (existing.isDeleted) {
-      return res.status(400).json({ error: "Cannot update a trashed note" });
-    }
-
-    const updated = await service.updateNote(+id, userId, data, labelIds);
-    res.json(updated);
-  } catch (error) {
-    res.status(400).json({ error: "Failed to update note" });
+  const existing = await service.getNote(id, userId);
+  if (!existing) throw new AppError(404, "NOT_FOUND", "Note not found");
+  if (existing.isDeleted) {
+    throw new AppError(400, "TRASHED_NOTE", "Cannot update a trashed note");
   }
+
+  const data = pickDefined({
+    title: body.title,
+    content: body.content,
+    isPinned: body.isPinned,
+    color: body.color,
+    isArchived: body.isArchived,
+    isChecklist: body.isChecklist,
+    checklist: body.checklist,
+  });
+
+  const updated = await service.updateNote(id, userId, data, body.labelIds);
+  res.json(updated);
 }
 
 export async function trashNote(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user.id;
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ error: "id is required" });
-    const existing = await service.getNote(+id, userId);
-    if (!existing) return res.status(404).json({ error: "Note not found" });
-    const result = await service.softDeleteNote(+id, userId);
-    res.json(result);
-  } catch (error) {
-    res.status(400).json({ error: "Failed to trash note" });
-  }
+  const userId = getUserId(req);
+  const id = Number(req.params.id);
+  const existing = await service.getNote(id, userId);
+  if (!existing) throw new AppError(404, "NOT_FOUND", "Note not found");
+  const result = await service.softDeleteNote(id, userId);
+  res.json(result);
 }
 
 export async function restoreNote(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user.id;
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ error: "id is required" });
-    const existing = await service.getNote(+id, userId);
-    if (!existing) return res.status(404).json({ error: "Note not found" });
-    const result = await service.restoreNote(+id, userId);
-    res.json(result);
-  } catch (error) {
-    res.status(400).json({ error: "Failed to restore note" });
-  }
+  const userId = getUserId(req);
+  const id = Number(req.params.id);
+  const existing = await service.getNote(id, userId);
+  if (!existing) throw new AppError(404, "NOT_FOUND", "Note not found");
+  const result = await service.restoreNote(id, userId);
+  res.json(result);
 }
 
 export async function permanentDeleteNote(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user.id;
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ error: "id is required" });
-    const existing = await service.getNote(+id, userId);
-    if (!existing) return res.status(404).json({ error: "Note not found" });
-    const result = await service.permanentDeleteNote(+id, userId);
-    res.json(result);
-  } catch (error) {
-    res.status(400).json({ error: "Failed to delete note" });
-  }
+  const userId = getUserId(req);
+  const id = Number(req.params.id);
+  const existing = await service.getNote(id, userId);
+  if (!existing) throw new AppError(404, "NOT_FOUND", "Note not found");
+  const result = await service.permanentDeleteNote(id, userId);
+  res.json(result);
 }
 
 export async function uploadNoteImage(req: Request, res: Response) {
+  const userId = getUserId(req);
+  const id = Number(req.params.id);
+
+  const file = req.file;
+  if (!file) throw new AppError(400, "NO_FILE", "No file provided");
+
+  const existing = await service.getNote(id, userId);
+  if (!existing) throw new AppError(404, "NOT_FOUND", "Note not found");
+
+  const storage = getStorage();
+  if (!storage) {
+    throw new AppError(503, "STORAGE_UNAVAILABLE", "Image storage not configured");
+  }
+
+  const key = generateImageKey(userId, id, file.originalname);
+  await storage.upload(key, file.buffer, file.mimetype);
+
+  let image;
   try {
-    const userId = (req as any).user.id;
-    const { id } = req.params;
-    if (!id) return res.status(400).json({ error: "id is required" });
-
-    const file = (req as any).file;
-    if (!file) {
-      return res.status(400).json({ error: "No file provided" });
-    }
-
-    const existing = await service.getNote(+id, userId);
-    if (!existing) return res.status(404).json({ error: "Note not found" });
-
-    const storage = getStorage();
-    if (!storage) {
-      return res.status(503).json({ error: "Image storage not configured" });
-    }
-
-    const key = generateImageKey(userId, +id, file.originalname);
-    await storage.upload(key, file.buffer, file.mimetype);
-
-    const image = await service.createNoteImage({
-      noteId: +id,
+    image = await service.createNoteImage({
+      noteId: id,
       key,
       filename: file.originalname,
       mimeType: file.mimetype,
@@ -170,54 +125,38 @@ export async function uploadNoteImage(req: Request, res: Response) {
       width: null,
       height: null,
     });
-
-    const presignedUrl = await storage.getSignedUrl(key);
-    res.json({ ...image, presignedUrl });
-  } catch (error: any) {
-    if (error?.code === "LIMIT_FILE_SIZE") {
-      return res.status(400).json({ error: "File too large. Maximum size is 10MB." });
-    }
-    if (error?.message?.startsWith("Invalid file type")) {
-      return res.status(400).json({ error: error.message });
-    }
-    res.status(400).json({ error: "Failed to upload image" });
+  } catch (error) {
+    // Don't orphan the S3 object if the DB insert fails.
+    await storage.delete(key).catch(() => {});
+    throw error;
   }
+
+  const presignedUrl = await storage.getSignedUrl(key);
+  res.json({ ...image, presignedUrl });
 }
 
 export async function deleteNoteImage(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user.id;
-    const { imageId } = req.params;
-    if (!imageId) return res.status(400).json({ error: "imageId is required" });
+  const userId = getUserId(req);
+  const imageId = Number(req.params.imageId);
 
-    const image = await service.getNoteImageById(+imageId);
-    if (!image) return res.status(404).json({ error: "Image not found" });
+  const image = await service.getNoteImageById(imageId);
+  if (!image) throw new AppError(404, "NOT_FOUND", "Image not found");
 
-    const note = await service.getNote(image.noteId, userId);
-    if (!note) return res.status(404).json({ error: "Image not found" });
+  const note = await service.getNote(image.noteId, userId);
+  if (!note) throw new AppError(404, "NOT_FOUND", "Image not found");
 
-    const storage = getStorage();
-    if (storage) {
-      await storage.delete(image.key);
-    }
-
-    await service.deleteNoteImageRecord(+imageId);
-    res.status(204).end();
-  } catch (error) {
-    res.status(400).json({ error: "Failed to delete image" });
+  const storage = getStorage();
+  if (storage) {
+    await storage.delete(image.key);
   }
+
+  await service.deleteNoteImageRecord(imageId);
+  res.status(204).end();
 }
 
 export async function reorderNotes(req: Request, res: Response) {
-  try {
-    const userId = (req as any).user.id;
-    const { orderedIds } = req.body;
-    if (!Array.isArray(orderedIds) || !orderedIds.every((id: unknown) => typeof id === "number" && Number.isInteger(id))) {
-      return res.status(400).json({ error: "orderedIds must be an array of numbers" });
-    }
-    await service.reorderNotes(userId, orderedIds);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(400).json({ error: "Failed to reorder notes" });
-  }
+  const userId = getUserId(req);
+  const body = req.body as ReorderNotesBody;
+  await service.reorderNotes(userId, body.orderedIds);
+  res.json({ success: true });
 }

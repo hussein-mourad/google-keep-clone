@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
+import type { DrizzleClient } from "../../db/types";
 import { db } from "../../db";
-import { labels } from "../../db/schema/labels";
-import { noteLabels } from "../../db/schema/labels";
+import { labels, noteLabels } from "../../db/schema/labels";
 
 export async function getLabels(userId: string) {
   return db
@@ -50,31 +50,36 @@ export async function deleteLabel(id: number, userId: string) {
   return result;
 }
 
+export async function setNoteLabelsTx(
+  client: DrizzleClient,
+  noteId: number,
+  labelIds: number[],
+  userId: string,
+) {
+  await client.delete(noteLabels).where(eq(noteLabels.noteId, noteId));
+
+  if (labelIds.length > 0) {
+    const owned = await client
+      .select({ id: labels.id })
+      .from(labels)
+      .where(and(inArray(labels.id, labelIds), eq(labels.userId, userId)));
+    const ownedIds = owned.map((l) => l.id);
+    if (ownedIds.length > 0) {
+      await client
+        .insert(noteLabels)
+        .values(ownedIds.map((labelId) => ({ noteId, labelId })));
+    }
+  }
+}
+
 export async function setNoteLabels(
   noteId: number,
   labelIds: number[],
   userId: string,
 ) {
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(noteLabels)
-      .where(eq(noteLabels.noteId, noteId));
-
-    if (labelIds.length > 0) {
-      const owned = await tx
-        .select({ id: labels.id })
-        .from(labels)
-        .where(
-          and(inArray(labels.id, labelIds), eq(labels.userId, userId)),
-        );
-      const ownedIds = owned.map((l) => l.id);
-      if (ownedIds.length > 0) {
-        await tx
-          .insert(noteLabels)
-          .values(ownedIds.map((labelId) => ({ noteId, labelId })));
-      }
-    }
-  });
+  await db.transaction((tx) =>
+    setNoteLabelsTx(tx, noteId, labelIds, userId),
+  );
 }
 
 export async function getNoteLabels(noteId: number) {

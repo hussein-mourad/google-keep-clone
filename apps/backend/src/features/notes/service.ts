@@ -1,9 +1,11 @@
 import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import type { DrizzleClient } from "../../db/types";
 import { db } from "../../db";
-import { noteImages, type NewNoteImage } from "../../db/schema/note-images";
+import { noteImages, type NewNoteImage, type NoteImage } from "../../db/schema/note-images";
 import { notesTable, type NewNote, type NoteChecklistItem } from "../../db/schema/notes";
-import { noteLabels, labels } from "../../db/schema/labels";
-import { getStorage } from "../../lib/storage";
+import { labels, noteLabels } from "../../db/schema/labels";
+import { getStorage, type StorageProvider } from "../../lib/storage";
+import { setNoteLabelsTx } from "../labels/service";
 
 interface GetNotesOptions {
   labelId?: number;
@@ -59,27 +61,7 @@ export async function getNote(id: number, userId: string) {
   if (!note) return undefined;
   const noteLabelsResult = await getNoteLabelsById(note.id);
   const images = await getNoteImages(note.id);
-  const storage = getStorage();
-  const imagesWithUrls = await Promise.all(
-    images.map(async (img) => {
-      const presignedUrl = storage
-        ? await storage.getSignedUrl(img.key)
-        : "";
-      return {
-        id: img.id,
-        noteId: img.noteId,
-        key: img.key,
-        filename: img.filename,
-        mimeType: img.mimeType,
-        size: img.size,
-        width: img.width,
-        height: img.height,
-        presignedUrl,
-        createdAt: img.createdAt,
-        updatedAt: img.updatedAt,
-      };
-    }),
-  );
+  const imagesWithUrls = await mapImagesWithUrls(images, getStorage());
   return { ...note, labels: noteLabelsResult, images: imagesWithUrls };
 }
 
@@ -96,7 +78,7 @@ export async function createNote(
       await setNoteLabelsTx(tx, result.id, labelIds, userId);
     }
 
-    const noteLabelsResult = await getNoteLabelsByIdTx(tx, result.id);
+    const noteLabelsResult = await getNoteLabelsById(result.id, tx);
     return { ...result, labels: noteLabelsResult, images: [] };
   });
 }
@@ -129,57 +111,44 @@ export async function updateNote(
       await setNoteLabelsTx(tx, id, labelIds, userId);
     }
 
-    const noteLabelsResult = await getNoteLabelsByIdTx(tx, id);
-    const noteImagesResult = await getNoteImages(id);
-    const storage = getStorage();
-    const imagesWithUrls = await Promise.all(
-      noteImagesResult.map(async (img) => {
-        const presignedUrl = storage
-          ? await storage.getSignedUrl(img.key)
-          : "";
-        return {
-          id: img.id,
-          noteId: img.noteId,
-          key: img.key,
-          filename: img.filename,
-          mimeType: img.mimeType,
-          size: img.size,
-          width: img.width,
-          height: img.height,
-          presignedUrl,
-          createdAt: img.createdAt,
-          updatedAt: img.updatedAt,
-        };
-      }),
+    const noteLabelsResult = await getNoteLabelsById(id, tx);
+    const noteImagesResult = await getNoteImages(id, tx);
+    const imagesWithUrls = await mapImagesWithUrls(
+      noteImagesResult,
+      getStorage(),
     );
     return { ...result, labels: noteLabelsResult, images: imagesWithUrls };
   });
 }
 
 export async function softDeleteNote(id: number, userId: string) {
-  const [result] = await db
-    .update(notesTable)
-    .set({ isDeleted: true, deletedAt: new Date() })
-    .where(
-      and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
-    )
-    .returning();
-  if (!result) throw new Error("Failed to delete note");
-  const noteLabelsResult = await getNoteLabelsById(result.id);
-  return { ...result, labels: noteLabelsResult, images: [] };
+  return db.transaction(async (tx) => {
+    const [result] = await tx
+      .update(notesTable)
+      .set({ isDeleted: true, deletedAt: new Date() })
+      .where(
+        and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
+      )
+      .returning();
+    if (!result) throw new Error("Failed to delete note");
+    const noteLabelsResult = await getNoteLabelsById(result.id, tx);
+    return { ...result, labels: noteLabelsResult, images: [] };
+  });
 }
 
 export async function restoreNote(id: number, userId: string) {
-  const [result] = await db
-    .update(notesTable)
-    .set({ isDeleted: false, deletedAt: null, isArchived: false })
-    .where(
-      and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
-    )
-    .returning();
-  if (!result) throw new Error("Failed to restore note");
-  const noteLabelsResult = await getNoteLabelsById(result.id);
-  return { ...result, labels: noteLabelsResult, images: [] };
+  return db.transaction(async (tx) => {
+    const [result] = await tx
+      .update(notesTable)
+      .set({ isDeleted: false, deletedAt: null, isArchived: false })
+      .where(
+        and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
+      )
+      .returning();
+    if (!result) throw new Error("Failed to restore note");
+    const noteLabelsResult = await getNoteLabelsById(result.id, tx);
+    return { ...result, labels: noteLabelsResult, images: [] };
+  });
 }
 
 export async function permanentDeleteNote(id: number, userId: string) {
@@ -191,14 +160,16 @@ export async function permanentDeleteNote(id: number, userId: string) {
     );
   }
 
-  const [result] = await db
-    .delete(notesTable)
-    .where(
-      and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
-    )
-    .returning();
-  if (!result) throw new Error("Failed to permanently delete note");
-  return { ...result, labels: [], images: [] };
+  return db.transaction(async (tx) => {
+    const [result] = await tx
+      .delete(notesTable)
+      .where(
+        and(eq(notesTable.id, id), eq(notesTable.userId, userId)),
+      )
+      .returning();
+    if (!result) throw new Error("Failed to permanently delete note");
+    return { ...result, labels: [], images: [] };
+  });
 }
 
 export async function reorderNotes(
@@ -217,42 +188,8 @@ export async function reorderNotes(
   });
 }
 
-async function setNoteLabelsTx(
-  tx: any,
-  noteId: number,
-  labelIds: number[],
-  userId: string,
-) {
-  await tx
-    .delete(noteLabels)
-    .where(eq(noteLabels.noteId, noteId));
-
-  if (labelIds.length > 0) {
-    const owned = await tx
-      .select({ id: labels.id })
-      .from(labels)
-      .where(
-        and(inArray(labels.id, labelIds), eq(labels.userId, userId)),
-      );
-    const ownedIds = owned.map((l: { id: number }) => l.id);
-    if (ownedIds.length > 0) {
-      await tx
-        .insert(noteLabels)
-        .values(ownedIds.map((labelId: number) => ({ noteId, labelId })));
-    }
-  }
-}
-
-async function getNoteLabelsById(noteId: number) {
-  return db
-    .select({ id: labels.id, name: labels.name })
-    .from(noteLabels)
-    .innerJoin(labels, eq(noteLabels.labelId, labels.id))
-    .where(eq(noteLabels.noteId, noteId));
-}
-
-async function getNoteLabelsByIdTx(tx: any, noteId: number) {
-  return tx
+async function getNoteLabelsById(noteId: number, client: DrizzleClient = db) {
+  return client
     .select({ id: labels.id, name: labels.name })
     .from(noteLabels)
     .innerJoin(labels, eq(noteLabels.labelId, labels.id))
@@ -282,8 +219,11 @@ export async function createNoteImage(image: NewNoteImage) {
   return result;
 }
 
-export async function getNoteImages(noteId: number) {
-  return db
+export async function getNoteImages(
+  noteId: number,
+  client: DrizzleClient = db,
+) {
+  return client
     .select()
     .from(noteImages)
     .where(eq(noteImages.noteId, noteId))
@@ -313,6 +253,20 @@ export async function getNoteImagesByNoteId(noteId: number) {
     .where(eq(noteImages.noteId, noteId));
 }
 
+async function mapImagesWithUrls(
+  images: NoteImage[],
+  storage: StorageProvider | null,
+) {
+  return Promise.all(
+    images.map(async (img) => {
+      const presignedUrl = storage
+        ? await storage.getSignedUrl(img.key)
+        : "";
+      return { ...img, presignedUrl };
+    }),
+  );
+}
+
 async function attachImages(notesList: any[]) {
   if (notesList.length === 0) return [];
 
@@ -326,26 +280,7 @@ async function attachImages(notesList: any[]) {
   const notesWithImages = await Promise.all(
     notesList.map(async (note: any) => {
       const images = allImages.filter((img) => img.noteId === note.id);
-      const imagesWithUrls = await Promise.all(
-        images.map(async (img) => {
-          const presignedUrl = storage
-            ? await storage.getSignedUrl(img.key)
-            : "";
-          return {
-            id: img.id,
-            noteId: img.noteId,
-            key: img.key,
-            filename: img.filename,
-            mimeType: img.mimeType,
-            size: img.size,
-            width: img.width,
-            height: img.height,
-            presignedUrl,
-            createdAt: img.createdAt,
-            updatedAt: img.updatedAt,
-          };
-        }),
-      );
+      const imagesWithUrls = await mapImagesWithUrls(images, storage);
       return { ...note, images: imagesWithUrls };
     }),
   );
