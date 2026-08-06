@@ -14,6 +14,7 @@
 			"**/.vscode/**/*",
 			"**/index.html",
 			"**/vite.config.ts",
+			"!**/playwright-report",
 			"!**/src/routeTree.gen.ts",
 			"!**/src/styles.css"
 		]

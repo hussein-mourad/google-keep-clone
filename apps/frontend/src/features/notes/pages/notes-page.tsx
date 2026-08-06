@@ -15,10 +15,12 @@ import {
 } from "#/features/notes/hooks";
 import type { Note, NoteChecklistItem } from "#/features/notes/types";
 import { useDebouncedValue } from "#/hooks/use-debounced-value";
+import { getErrorMessage } from "#/lib/api";
 import { authClient } from "#/lib/auth-client";
 import { AppSidebar } from "../components/app-sidebar";
 import { EditNoteDialog } from "../components/edit-note-dialog";
 import { NotesGrid } from "../components/notes-grid";
+import { NotesGridSkeleton } from "../components/notes-grid-skeleton";
 import { NotesHeader } from "../components/notes-header";
 import { TakeNoteInput } from "../components/take-note-input";
 
@@ -132,7 +134,6 @@ export function NotesPage() {
 		// The order was already applied live during the drag; persist the result.
 		const current =
 			queryClient.getQueryData<Note[]>(notesQueryKey(notesParams)) ?? [];
-		console.log(current);
 		reorderMutation.mutate(current.map((n) => n.id));
 	}
 
@@ -169,12 +170,10 @@ export function NotesPage() {
 								/>
 							)}
 							{notesQuery.isPending ? (
-								<div className="flex items-center justify-center py-20">
-									<div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-								</div>
+								<NotesGridSkeleton />
 							) : notesQuery.isError ? (
 								<div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
-									<p>Failed to load notes.</p>
+									<p>{getErrorMessage(notesQuery.error)}</p>
 									<button
 										type="button"
 										onClick={() => notesQuery.refetch()}
@@ -196,6 +195,7 @@ export function NotesPage() {
 									onReorderLive={handleReorderLive}
 									view={view}
 									layout={layout}
+									search={debouncedSearch}
 								/>
 							)}
 						</main>
