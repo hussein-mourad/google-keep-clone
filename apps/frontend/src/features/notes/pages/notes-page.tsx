@@ -1,17 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { SidebarInset, SidebarProvider } from "#/components/ui/sidebar";
-import { getLabels } from "#/features/labels/api";
+import { useLabels } from "#/features/labels/hooks";
 import type { Label } from "#/features/labels/types";
 import {
-	createNote,
-	getNotes,
-	permanentDeleteNote,
-	reorderNotes,
-	restoreNote,
-	trashNote,
-	updateNote,
-} from "#/features/notes/api";
+	notesQueryKey,
+	useCreateNote,
+	useNotes,
+	usePermanentDeleteNote,
+	useReorderNotes,
+	useRestoreNote,
+	useTrashNote,
+	useUpdateNote,
+} from "#/features/notes/hooks";
 import type { Note, NoteChecklistItem } from "#/features/notes/types";
+import { useDebouncedValue } from "#/hooks/use-debounced-value";
 import { authClient } from "#/lib/auth-client";
 import { AppSidebar } from "../components/app-sidebar";
 import { EditNoteDialog } from "../components/edit-note-dialog";
@@ -21,60 +24,34 @@ import { TakeNoteInput } from "../components/take-note-input";
 
 export function NotesPage() {
 	const { data: session } = authClient.useSession();
-	const [notes, setNotes] = useState<Note[]>([]);
-	const [loading, setLoading] = useState(true);
+	const queryClient = useQueryClient();
 	const [editingNote, setEditingNote] = useState<Note | null>(null);
-	const [labels, setLabels] = useState<Label[]>([]);
 	const [filterLabelId, setFilterLabelId] = useState<number | undefined>();
 	const [search, setSearch] = useState("");
 	const [view, setView] = useState<"notes" | "archived" | "trash">("notes");
 	const [layout, setLayout] = useState<"grid" | "list">("grid");
-	const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	async function loadNotes() {
-		try {
-			const data = await getNotes({
-				labelId: view === "notes" ? filterLabelId : undefined,
-				search: search || undefined,
-				archived: view === "archived",
-				trash: view === "trash",
-			});
-			setNotes(data);
-		} catch {
-			setNotes([]);
-		} finally {
-			setLoading(false);
-		}
-	}
+	const debouncedSearch = useDebouncedValue(search, search ? 250 : 0);
 
-	async function loadLabels() {
-		try {
-			const data = await getLabels();
-			setLabels(data);
-		} catch {
-			setLabels([]);
-		}
-	}
+	const notesParams = {
+		labelId: view === "notes" ? filterLabelId : undefined,
+		search: debouncedSearch || undefined,
+		archived: view === "archived",
+		trash: view === "trash",
+	};
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
-	useEffect(() => {
-		loadLabels();
-	}, []);
+	const notesQuery = useNotes(notesParams);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reload when filter/search/view changes
-	useEffect(() => {
-		setLoading(true);
-		if (searchTimeout.current) clearTimeout(searchTimeout.current);
-		searchTimeout.current = setTimeout(
-			() => {
-				loadNotes();
-			},
-			search ? 250 : 0,
-		);
-		return () => {
-			if (searchTimeout.current) clearTimeout(searchTimeout.current);
-		};
-	}, [filterLabelId, search, view]);
+	const labelsQuery = useLabels();
+	const labels: Label[] = labelsQuery.data ?? [];
+	const notes: Note[] = notesQuery.data ?? [];
+
+	const createNoteMutation = useCreateNote();
+	const updateNoteMutation = useUpdateNote();
+	const trashNoteMutation = useTrashNote();
+	const restoreNoteMutation = useRestoreNote();
+	const permanentDeleteMutation = usePermanentDeleteNote();
+	const reorderMutation = useReorderNotes();
 
 	async function handleCreate(note: {
 		title: string;
@@ -85,9 +62,7 @@ export function NotesPage() {
 		isChecklist?: boolean;
 		checklist?: NoteChecklistItem[];
 	}): Promise<Note> {
-		const created = await createNote(note);
-		await loadNotes();
-		return created;
+		return createNoteMutation.mutateAsync(note);
 	}
 
 	async function handleUpdate(
@@ -102,57 +77,63 @@ export function NotesPage() {
 			checklist?: NoteChecklistItem[];
 		},
 	) {
-		await updateNote(id, note);
+		await updateNoteMutation.mutateAsync({ id, note });
 		setEditingNote(null);
-		await loadNotes();
 	}
 
 	async function handleDelete(id: number) {
-		await trashNote(id);
+		await trashNoteMutation.mutateAsync(id);
 		setEditingNote(null);
-		await loadNotes();
 	}
 
 	async function handleTogglePin(note: Note) {
-		await updateNote(note.id, { isPinned: !note.isPinned });
-		await loadNotes();
+		await updateNoteMutation.mutateAsync({
+			id: note.id,
+			note: { isPinned: !note.isPinned },
+		});
 	}
 
 	async function handleArchive(note: Note) {
-		await updateNote(note.id, { isArchived: true });
-		await loadNotes();
+		await updateNoteMutation.mutateAsync({
+			id: note.id,
+			note: { isArchived: true },
+		});
 	}
 
 	async function handleTrash(note: Note) {
-		await trashNote(note.id);
-		await loadNotes();
+		await trashNoteMutation.mutateAsync(note.id);
 	}
 
 	async function handleRestore(note: Note) {
-		await restoreNote(note.id);
-		await loadNotes();
+		await restoreNoteMutation.mutateAsync(note.id);
 	}
 
 	async function handlePermanentDelete(note: Note) {
-		await permanentDeleteNote(note.id);
-		await loadNotes();
+		await permanentDeleteMutation.mutateAsync(note.id);
 	}
 
 	function handleReorderLive(activeId: number, overId: number) {
-		setNotes((current) => {
-			const idx = current.findIndex((n) => n.id === activeId);
-			const overIdx = current.findIndex((n) => n.id === overId);
-			if (idx === -1 || overIdx === -1 || idx === overIdx) return current;
-			const next = [...current];
-			const [moved] = next.splice(idx, 1);
-			next.splice(overIdx, 0, moved);
-			return next;
-		});
+		queryClient.setQueryData(
+			notesQueryKey(notesParams),
+			(current: Note[] | undefined) => {
+				if (!current) return current;
+				const idx = current.findIndex((n) => n.id === activeId);
+				const overIdx = current.findIndex((n) => n.id === overId);
+				if (idx === -1 || overIdx === -1 || idx === overIdx) return current;
+				const next = [...current];
+				const [moved] = next.splice(idx, 1);
+				next.splice(overIdx, 0, moved);
+				return next;
+			},
+		);
 	}
 
 	function handleReorder() {
 		// The order was already applied live during the drag; persist the result.
-		reorderNotes(notes.map((n) => n.id)).catch(() => loadNotes());
+		const current =
+			queryClient.getQueryData<Note[]>(notesQueryKey(notesParams)) ?? [];
+		console.log(current);
+		reorderMutation.mutate(current.map((n) => n.id));
 	}
 
 	return (
@@ -187,9 +168,20 @@ export function NotesPage() {
 									onUpdate={handleUpdate}
 								/>
 							)}
-							{loading ? (
+							{notesQuery.isPending ? (
 								<div className="flex items-center justify-center py-20">
 									<div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+								</div>
+							) : notesQuery.isError ? (
+								<div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
+									<p>Failed to load notes.</p>
+									<button
+										type="button"
+										onClick={() => notesQuery.refetch()}
+										className="rounded-md border px-3 py-1.5 text-sm transition-colors hover:bg-foreground/10"
+									>
+										Retry
+									</button>
 								</div>
 							) : (
 								<NotesGrid

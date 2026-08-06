@@ -9,7 +9,7 @@
     "shadcn": {
       "type": "local",
       "command": [
-        "npx",
+        "bunx",
         "shadcn@latest",
         "mcp"
       ],
@@ -18,12 +18,23 @@
     "playwright": {
       "type": "local",
       "command": [
-        "npx",
+        "bunx",
         "@playwright/mcp@latest",
         "--browser=chromium",
         "--executable-path=/usr/bin/chromium"
       ],
       "enabled": true
     }
+    // "context7": {
+    //   "type": "local",
+    //   "command": [
+    //     "bunx",
+    //     "-y",
+    //     "@upstash/context7-mcp"
+    //     // "--api-key",
+    //     // "YOUR_API_KEY"
+    //   ],
+    //   "enabled": true
+    // }
   }
 }

@@ -26,11 +26,19 @@ export default defineConfig({
 			name: "chromium",
 			use: {
 				...devices["Desktop Chrome"],
-				launchOptions: {
-					executablePath: "/usr/bin/chromium",
-				},
+				// launchOptions: {
+				// 	executablePath: "/usr/bin/chromium",
+				// },
 			},
 		},
+		{
+			name: "firefox",
+			use: { ...devices["Desktop Firefox"] },
+		},
+		// {
+		// 	name: "webkit",
+		// 	use: { ...devices["Desktop Safari"] },
+		// },
 	],
 	webServer: [
 		{

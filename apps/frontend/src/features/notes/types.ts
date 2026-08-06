@@ -20,6 +20,27 @@ export interface NoteChecklistItem {
 	checked: boolean;
 }
 
+export interface CreateNoteInput {
+	title: string;
+	content: string;
+	color?: string | null;
+	labelIds?: number[];
+	isPinned?: boolean;
+	isChecklist?: boolean;
+	checklist?: NoteChecklistItem[];
+}
+
+export interface UpdateNoteInput {
+	title?: string;
+	content?: string;
+	isPinned?: boolean;
+	isArchived?: boolean;
+	color?: string | null;
+	labelIds?: number[];
+	isChecklist?: boolean;
+	checklist?: NoteChecklistItem[];
+}
+
 export interface Note {
 	id: number;
 	title: string;

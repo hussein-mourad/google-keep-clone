@@ -1,10 +1,13 @@
 import { PlusIcon, XIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
-import { createLabel, deleteLabel, getLabels } from "#/features/labels/api";
-import type { Label } from "#/features/labels/types";
+import {
+	useCreateLabel,
+	useDeleteLabel,
+	useLabels,
+} from "#/features/labels/hooks";
 
 interface LabelPickerProps {
 	selectedIds: number[];
@@ -12,23 +15,19 @@ interface LabelPickerProps {
 }
 
 export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
-	const [labels, setLabels] = useState<Label[]>([]);
+	const labelsQuery = useLabels();
+	const createLabelMutation = useCreateLabel();
+	const deleteLabelMutation = useDeleteLabel();
+	const labels = labelsQuery.data ?? [];
 	const [newLabelName, setNewLabelName] = useState("");
 	const [creating, setCreating] = useState(false);
-
-	useEffect(() => {
-		getLabels()
-			.then(setLabels)
-			.catch(() => {});
-	}, []);
 
 	async function handleCreate() {
 		const name = newLabelName.trim();
 		if (!name) return;
 		setCreating(true);
 		try {
-			const label = await createLabel(name);
-			setLabels((prev) => [...prev, label]);
+			const label = await createLabelMutation.mutateAsync(name);
 			onChange([...selectedIds, label.id]);
 			setNewLabelName("");
 		} catch {
@@ -38,8 +37,7 @@ export function LabelPicker({ selectedIds, onChange }: LabelPickerProps) {
 	}
 
 	async function handleDelete(id: number) {
-		await deleteLabel(id);
-		setLabels((prev) => prev.filter((l) => l.id !== id));
+		await deleteLabelMutation.mutateAsync(id);
 		onChange(selectedIds.filter((sid) => sid !== id));
 	}
 

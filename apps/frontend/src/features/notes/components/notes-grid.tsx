@@ -18,7 +18,7 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "#/lib/utils";
 import type { Note } from "../types";
 import { NoteCard } from "./note-card";
@@ -31,7 +31,7 @@ interface NotesGridProps {
 	onTrash?: (note: Note) => void;
 	onRestore?: (note: Note) => void;
 	onPermanentDelete?: (note: Note) => void;
-	onReorder?: (activeId: number, overId: number) => void;
+	onReorder?: () => void;
 	onReorderLive?: (activeId: number, overId: number) => void;
 	view?: "notes" | "archived" | "trash";
 	layout?: "grid" | "list";
@@ -139,6 +139,7 @@ function NoteList({
 	layout,
 }: NotesGridProps) {
 	const [activeId, setActiveId] = useState<number | null>(null);
+	const didReorderRef = useRef(false);
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
 		useSensor(KeyboardSensor, {
@@ -151,20 +152,28 @@ function NoteList({
 
 	function handleDragStart(event: DragStartEvent) {
 		setActiveId(event.active.id as number);
+		didReorderRef.current = false;
 	}
 
 	function handleDragOver(event: DragOverEvent) {
 		const { active, over } = event;
 		if (!over || active.id === over.id || !onReorderLive) return;
 		// Reorder live during drag so CSS columns reflow naturally (smooth masonry).
+		didReorderRef.current = true;
 		onReorderLive(active.id as number, over.id as number);
 	}
 
 	function handleDragEnd(event: DragEndEvent) {
 		setActiveId(null);
-		const { active, over } = event;
-		if (!over || active.id === over.id || !onReorder) return;
-		onReorder(active.id as number, over.id as number);
+		const { over } = event;
+		if (!over || !onReorder) return;
+		// Items reflow during the drag (onDragOver), so by drop time active.id
+		// often equals over.id. Persist the current order when a live reorder
+		// actually happened.
+		if (didReorderRef.current) {
+			onReorder();
+		}
+		didReorderRef.current = false;
 	}
 
 	const list = notes.map((note) => (
