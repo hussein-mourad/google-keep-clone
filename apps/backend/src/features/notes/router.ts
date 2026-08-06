@@ -32,6 +32,12 @@ router.patch(
   validate(idParamsSchema, "params"),
   controller.restoreNote,
 );
+router.post(
+  "/:id/duplicate",
+  validate(idParamsSchema, "params"),
+  controller.duplicateNote,
+);
+router.delete("/trash", controller.emptyTrash);
 router.delete(
   "/:id",
   validate(idParamsSchema, "params"),

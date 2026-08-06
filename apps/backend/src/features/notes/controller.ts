@@ -69,6 +69,20 @@ export async function updateNote(req: Request, res: Response) {
   res.json(updated);
 }
 
+export async function duplicateNote(req: Request, res: Response) {
+  const userId = getUserId(req);
+  const id = Number(req.params.id);
+  const note = await service.duplicateNote(id, userId);
+  if (!note) throw new AppError(404, "NOT_FOUND", "Note not found");
+  res.json(note);
+}
+
+export async function emptyTrash(req: Request, res: Response) {
+  const userId = getUserId(req);
+  const deletedCount = await service.emptyTrash(userId);
+  res.json({ success: true, deletedCount });
+}
+
 export async function trashNote(req: Request, res: Response) {
   const userId = getUserId(req);
   const id = Number(req.params.id);

@@ -31,6 +31,8 @@ interface NotesGridProps {
 	onTrash?: (note: Note) => void;
 	onRestore?: (note: Note) => void;
 	onPermanentDelete?: (note: Note) => void;
+	onDuplicate?: (note: Note) => void;
+	onExport?: (note: Note) => void;
 	onReorder?: () => void;
 	onReorderLive?: (activeId: number, overId: number) => void;
 	view?: "notes" | "archived" | "trash";
@@ -78,6 +80,8 @@ function SortableNoteCard({
 	onTrash,
 	onRestore,
 	onPermanentDelete,
+	onDuplicate,
+	onExport,
 	view,
 }: {
 	note: Note;
@@ -87,6 +91,8 @@ function SortableNoteCard({
 	onTrash?: (note: Note) => void;
 	onRestore?: (note: Note) => void;
 	onPermanentDelete?: (note: Note) => void;
+	onDuplicate?: (note: Note) => void;
+	onExport?: (note: Note) => void;
 	view?: "notes" | "archived" | "trash";
 }) {
 	const {
@@ -128,6 +134,8 @@ function SortableNoteCard({
 				onTrash={onTrash}
 				onRestore={onRestore}
 				onPermanentDelete={onPermanentDelete}
+				onDuplicate={onDuplicate}
+				onExport={onExport}
 				view={view}
 			/>
 		</div>
@@ -142,6 +150,8 @@ function NoteList({
 	onTrash,
 	onRestore,
 	onPermanentDelete,
+	onDuplicate,
+	onExport,
 	onReorder,
 	onReorderLive,
 	view,
@@ -195,6 +205,8 @@ function NoteList({
 			onTrash={onTrash}
 			onRestore={onRestore}
 			onPermanentDelete={onPermanentDelete}
+			onDuplicate={onDuplicate}
+			onExport={onExport}
 			view={view}
 		/>
 	));
@@ -229,6 +241,8 @@ function NoteList({
 							onTrash={onTrash}
 							onRestore={onRestore}
 							onPermanentDelete={onPermanentDelete}
+							onDuplicate={onDuplicate}
+							onExport={onExport}
 							view={view}
 						/>
 					</div>

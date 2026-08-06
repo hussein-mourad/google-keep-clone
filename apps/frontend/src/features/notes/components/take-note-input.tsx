@@ -61,9 +61,14 @@ interface TakeNoteInputProps {
 			checklist?: NoteChecklistItem[];
 		},
 	) => Promise<void>;
+	openRef?: { current: (() => void) | null };
 }
 
-export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
+export function TakeNoteInput({
+	onSubmit,
+	onUpdate,
+	openRef,
+}: TakeNoteInputProps) {
 	const [expanded, setExpanded] = useState(false);
 	const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
 	const [selectedColor, setSelectedColor] = useState<string | null>(null);
@@ -109,6 +114,15 @@ export function TakeNoteInput({ onSubmit, onUpdate }: TakeNoteInputProps) {
 			titleRef.current.focus();
 		}
 	}, [expanded]);
+
+	useEffect(() => {
+		if (openRef) {
+			openRef.current = () => setExpanded(true);
+			return () => {
+				openRef.current = null;
+			};
+		}
+	}, [openRef]);
 
 	useEffect(() => {
 		if (!expanded) return;

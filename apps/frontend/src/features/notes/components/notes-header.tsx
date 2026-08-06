@@ -4,6 +4,7 @@ import {
 	SearchIcon,
 	SidebarIcon,
 } from "lucide-react";
+import type { RefObject } from "react";
 import { ModeToggle } from "#/components/theme/toggle";
 import { Button } from "#/components/ui/button";
 import { useSidebar } from "#/components/ui/sidebar";
@@ -14,6 +15,7 @@ interface NotesHeaderProps {
 	onSearchChange: (search: string) => void;
 	layout: "grid" | "list";
 	onLayoutChange: (layout: "grid" | "list") => void;
+	searchInputRef?: RefObject<HTMLInputElement | null>;
 	user: {
 		name?: string | null;
 		email?: string | null;
@@ -26,6 +28,7 @@ export function NotesHeader({
 	onSearchChange,
 	layout,
 	onLayoutChange,
+	searchInputRef,
 	user,
 }: NotesHeaderProps) {
 	const { toggleSidebar } = useSidebar();
@@ -46,6 +49,7 @@ export function NotesHeader({
 				<div className="relative w-full">
 					<SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 					<input
+						ref={searchInputRef}
 						type="text"
 						placeholder="Search"
 						value={search}
