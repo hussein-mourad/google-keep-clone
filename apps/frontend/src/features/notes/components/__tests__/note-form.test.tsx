@@ -10,9 +10,7 @@ vi.mock("#/features/labels/api", () => ({
 }));
 
 vi.mock("../label-picker", () => ({
-	LabelPicker: ({ selectedIds, onChange }: any) => (
-		<div data-testid="label-picker" />
-	),
+	LabelPicker: () => <div data-testid="label-picker" />,
 }));
 
 describe("NoteForm", () => {

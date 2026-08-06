@@ -146,7 +146,9 @@ export function AuthForm({ onSuccess, initialMode = "signin" }: AuthFormProps) {
 					<Field>
 						<FieldContent>
 							<Input placeholder="Name" {...register("name")} required />
-							{errors.name && <FieldError errors={[errors.name]} />}
+							{"name" in errors && errors.name && (
+								<FieldError errors={[errors.name]} />
+							)}
 						</FieldContent>
 					</Field>
 				)}
