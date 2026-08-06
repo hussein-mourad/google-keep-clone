@@ -1,16 +1,8 @@
 import { PlusIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createChecklistItem } from "../checklist-utils";
 import type { NoteChecklistItem } from "../types";
-
-function uid(): string {
-	return typeof crypto !== "undefined" && "randomUUID" in crypto
-		? crypto.randomUUID()
-		: `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export function createChecklistItem(): NoteChecklistItem {
-	return { id: uid(), text: "", checked: false };
-}
+import { ChecklistProgress } from "./checklist-progress";
 
 interface ChecklistEditorProps {
 	items: NoteChecklistItem[];
@@ -20,7 +12,6 @@ interface ChecklistEditorProps {
 export function ChecklistEditor({ items, onChange }: ChecklistEditorProps) {
 	const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 	const [focusIndex, setFocusIndex] = useState<number | null>(null);
-	const checkedCount = items.filter((item) => item.checked).length;
 
 	useEffect(() => {
 		if (focusIndex !== null) {
@@ -99,41 +90,7 @@ export function ChecklistEditor({ items, onChange }: ChecklistEditorProps) {
 				<PlusIcon className="size-3.5" />
 				Add item
 			</button>
-			{items.length > 0 && (
-				<div className="flex items-center gap-2 pt-1">
-					<div className="h-1.5 flex-1 overflow-hidden rounded-full bg-current/15">
-						<div
-							className="h-full rounded-full bg-current"
-							style={{
-								width: `${Math.round((checkedCount / items.length) * 100)}%`,
-							}}
-						/>
-					</div>
-					<span className="text-[10px] opacity-70">
-						{checkedCount}/{items.length}
-					</span>
-				</div>
-			)}
-		</div>
-	);
-}
-
-export function ChecklistProgress({ items }: { items: NoteChecklistItem[] }) {
-	if (items.length === 0) return null;
-	const checkedCount = items.filter((item) => item.checked).length;
-	return (
-		<div className="flex items-center gap-2 px-4 pb-2">
-			<div className="h-1.5 flex-1 overflow-hidden rounded-full bg-current/15">
-				<div
-					className="h-full rounded-full bg-current"
-					style={{
-						width: `${Math.round((checkedCount / items.length) * 100)}%`,
-					}}
-				/>
-			</div>
-			<span className="text-[10px] opacity-70">
-				{checkedCount}/{items.length}
-			</span>
+			{items.length > 0 && <ChecklistProgress items={items} className="pt-1" />}
 		</div>
 	);
 }
