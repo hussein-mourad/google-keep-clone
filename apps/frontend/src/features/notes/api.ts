@@ -54,6 +54,19 @@ export async function permanentDeleteNote(id: number): Promise<Note> {
 	return data;
 }
 
+export async function duplicateNote(id: number): Promise<Note> {
+	const { data } = await api.post(`/api/notes/${id}/duplicate`);
+	return data;
+}
+
+export async function emptyTrash(): Promise<{
+	success: boolean;
+	deletedCount: number;
+}> {
+	const { data } = await api.delete("/api/notes/trash");
+	return data;
+}
+
 export async function uploadNoteImage(
 	noteId: number,
 	file: File,

@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { getErrorMessage } from "#/lib/api";
 import {
 	createNote,
+	duplicateNote,
+	emptyTrash,
 	getNotes,
 	permanentDeleteNote,
 	reorderNotes,
@@ -188,5 +190,21 @@ export function useReorderNotes() {
 			invalidateNotes(queryClient);
 			toast.error(getErrorMessage(error));
 		},
+	});
+}
+
+export function useDuplicateNote() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: duplicateNote,
+		onSuccess: () => invalidateNotes(queryClient),
+	});
+}
+
+export function useEmptyTrash() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: emptyTrash,
+		onSuccess: () => invalidateNotes(queryClient),
 	});
 }

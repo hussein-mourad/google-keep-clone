@@ -332,6 +332,46 @@ describe("notes API", () => {
 
     assert.equal(res.body.error, "Cannot update a trashed note");
   });
+
+  it("POST /api/notes/:id/duplicate copies a note", async () => {
+    const createRes = await request(app)
+      .post("/api/notes")
+      .send({ title: "Original", content: "Body", color: "#f28b82" });
+
+    const res = await request(app)
+      .post(`/api/notes/${createRes.body.id}/duplicate`)
+      .expect(200);
+
+    assert.equal(res.body.title, "Copy of Original");
+    assert.equal(res.body.content, "Body");
+    assert.equal(res.body.color, "#f28b82");
+    assert.notEqual(res.body.id, createRes.body.id);
+  });
+
+  it("POST /api/notes/:id/duplicate returns 404 for missing note", async () => {
+    await request(app).post("/api/notes/999999/duplicate").expect(404);
+  });
+
+  it("DELETE /api/notes/trash empties the trash", async () => {
+    const keepRes = await request(app)
+      .post("/api/notes")
+      .send({ title: "Keep Me", content: "Content" });
+    const trashRes = await request(app)
+      .post("/api/notes")
+      .send({ title: "Empty Me", content: "Content" });
+
+    await request(app).patch(`/api/notes/${trashRes.body.id}/trash`);
+
+    const res = await request(app).delete("/api/notes/trash").expect(200);
+    assert.equal(res.body.success, true);
+    assert.ok(res.body.deletedCount >= 1);
+
+    const after = await request(app)
+      .get("/api/notes?trash=true")
+      .expect(200);
+    assert.equal(after.body.length, 0);
+    await request(app).get(`/api/notes/${keepRes.body.id}`).expect(200);
+  });
 });
 
 describe("labels API", () => {

@@ -1,11 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { Trash2Icon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { SidebarInset, SidebarProvider } from "#/components/ui/sidebar";
 import { useLabels } from "#/features/labels/hooks";
 import type { Label } from "#/features/labels/types";
 import {
 	notesQueryKey,
 	useCreateNote,
+	useDuplicateNote,
+	useEmptyTrash,
 	useNotes,
 	usePermanentDeleteNote,
 	useReorderNotes,
@@ -13,6 +16,7 @@ import {
 	useTrashNote,
 	useUpdateNote,
 } from "#/features/notes/hooks";
+import { downloadMarkdown } from "#/features/notes/markdown";
 import type { Note, NoteChecklistItem } from "#/features/notes/types";
 import { useDebouncedValue } from "#/hooks/use-debounced-value";
 import { getErrorMessage } from "#/lib/api";
@@ -32,6 +36,8 @@ export function NotesPage() {
 	const [search, setSearch] = useState("");
 	const [view, setView] = useState<"notes" | "archived" | "trash">("notes");
 	const [layout, setLayout] = useState<"grid" | "list">("grid");
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const composerOpenRef = useRef<(() => void) | null>(null);
 
 	const debouncedSearch = useDebouncedValue(search, search ? 250 : 0);
 
@@ -54,6 +60,33 @@ export function NotesPage() {
 	const restoreNoteMutation = useRestoreNote();
 	const permanentDeleteMutation = usePermanentDeleteNote();
 	const reorderMutation = useReorderNotes();
+	const duplicateMutation = useDuplicateNote();
+	const emptyTrashMutation = useEmptyTrash();
+
+	useEffect(() => {
+		function onKeyDown(e: KeyboardEvent) {
+			const target = e.target as HTMLElement;
+			const isTyping =
+				target.tagName === "INPUT" ||
+				target.tagName === "TEXTAREA" ||
+				target.isContentEditable;
+
+			if (e.key === "/" && !isTyping) {
+				e.preventDefault();
+				searchInputRef.current?.focus();
+				searchInputRef.current?.select();
+			} else if (e.key === "n" && !isTyping) {
+				e.preventDefault();
+				composerOpenRef.current?.();
+			} else if (e.key === "g" && !isTyping) {
+				setView("notes");
+			} else if (e.key === "Escape" && editingNote) {
+				setEditingNote(null);
+			}
+		}
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [editingNote]);
 
 	async function handleCreate(note: {
 		title: string;
@@ -114,6 +147,18 @@ export function NotesPage() {
 		await permanentDeleteMutation.mutateAsync(note.id);
 	}
 
+	async function handleDuplicate(note: Note) {
+		await duplicateMutation.mutateAsync(note.id);
+	}
+
+	async function handleEmptyTrash() {
+		await emptyTrashMutation.mutateAsync();
+	}
+
+	function handleExport(note: Note) {
+		downloadMarkdown(note);
+	}
+
 	function handleReorderLive(activeId: number, overId: number) {
 		queryClient.setQueryData(
 			notesQueryKey(notesParams),
@@ -145,6 +190,7 @@ export function NotesPage() {
 					onSearchChange={setSearch}
 					layout={layout}
 					onLayoutChange={setLayout}
+					searchInputRef={searchInputRef}
 					user={session?.user ?? null}
 				/>
 				<div className="flex flex-1">
@@ -167,7 +213,21 @@ export function NotesPage() {
 								<TakeNoteInput
 									onSubmit={handleCreate}
 									onUpdate={handleUpdate}
+									openRef={composerOpenRef}
 								/>
+							)}
+							{view === "trash" && notes.length > 0 && (
+								<div className="mb-4 flex justify-end">
+									<button
+										type="button"
+										onClick={() => void handleEmptyTrash()}
+										disabled={emptyTrashMutation.isPending}
+										className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-foreground/10 disabled:opacity-50"
+									>
+										<Trash2Icon className="size-4" />
+										Empty trash
+									</button>
+								</div>
 							)}
 							{notesQuery.isPending ? (
 								<NotesGridSkeleton />
@@ -191,6 +251,8 @@ export function NotesPage() {
 									onTrash={handleTrash}
 									onRestore={handleRestore}
 									onPermanentDelete={handlePermanentDelete}
+									onDuplicate={handleDuplicate}
+									onExport={handleExport}
 									onReorder={handleReorder}
 									onReorderLive={handleReorderLive}
 									view={view}

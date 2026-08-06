@@ -2,6 +2,8 @@ import {
 	ArchiveIcon,
 	ArchiveRestoreIcon,
 	CheckIcon,
+	CopyIcon,
+	DownloadIcon,
 	PinIcon,
 	Trash2Icon,
 	Undo2Icon,
@@ -18,6 +20,8 @@ interface NoteCardProps {
 	onTrash?: (note: Note) => void;
 	onRestore?: (note: Note) => void;
 	onPermanentDelete?: (note: Note) => void;
+	onDuplicate?: (note: Note) => void;
+	onExport?: (note: Note) => void;
 	view?: "notes" | "archived" | "trash";
 }
 
@@ -39,6 +43,8 @@ export function NoteCard({
 	onTrash,
 	onRestore,
 	onPermanentDelete,
+	onDuplicate,
+	onExport,
 	view = "notes",
 }: NoteCardProps) {
 	const preview = note.content.slice(0, 150);
@@ -193,6 +199,28 @@ export function NoteCard({
 								title="Delete"
 							>
 								<Trash2Icon className="size-4" />
+							</IconButton>
+						)}
+						{onDuplicate && (
+							<IconButton
+								onClick={(e) => {
+									e.stopPropagation();
+									onDuplicate(note);
+								}}
+								title="Make a copy"
+							>
+								<CopyIcon className="size-4" />
+							</IconButton>
+						)}
+						{onExport && (
+							<IconButton
+								onClick={(e) => {
+									e.stopPropagation();
+									onExport(note);
+								}}
+								title="Download as Markdown"
+							>
+								<DownloadIcon className="size-4" />
 							</IconButton>
 						)}
 					</>

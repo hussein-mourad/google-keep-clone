@@ -83,6 +83,59 @@ export async function createNote(
   });
 }
 
+export async function duplicateNote(id: number, userId: string) {
+  const [source] = await db
+    .select()
+    .from(notesTable)
+    .where(and(eq(notesTable.id, id), eq(notesTable.userId, userId)));
+  if (!source) return undefined;
+
+  const labelIds = (await getNoteLabelsById(source.id)).map(
+    (label) => label.id,
+  );
+  const title = source.title ? `Copy of ${source.title}` : "";
+
+  return createNote(
+    {
+      title,
+      content: source.content,
+      userId,
+      color: source.color,
+      isChecklist: source.isChecklist,
+      checklist: source.checklist,
+    },
+    labelIds,
+    userId,
+  );
+}
+
+export async function emptyTrash(userId: string) {
+  const trashed = await db
+    .select({ id: notesTable.id })
+    .from(notesTable)
+    .where(
+      and(eq(notesTable.userId, userId), eq(notesTable.isDeleted, true)),
+    );
+  const ids = trashed.map((n) => n.id);
+  if (ids.length === 0) return 0;
+
+  const images = await db
+    .select()
+    .from(noteImages)
+    .where(inArray(noteImages.noteId, ids));
+  const storage = getStorage();
+  if (storage) {
+    await Promise.allSettled(images.map((img) => storage.delete(img.key)));
+  }
+
+  await db.delete(noteLabels).where(inArray(noteLabels.noteId, ids));
+  await db.delete(noteImages).where(inArray(noteImages.noteId, ids));
+  await db.delete(notesTable).where(
+    and(eq(notesTable.userId, userId), eq(notesTable.isDeleted, true)),
+  );
+  return ids.length;
+}
+
 export async function updateNote(
   id: number,
   userId: string,
