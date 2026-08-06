@@ -1,5 +1,14 @@
-import { createChecklistItem } from "./components/checklist-editor";
 import type { NoteChecklistItem } from "./types";
+
+function uid(): string {
+	return typeof crypto !== "undefined" && "randomUUID" in crypto
+		? crypto.randomUUID()
+		: `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createChecklistItem(): NoteChecklistItem {
+	return { id: uid(), text: "", checked: false };
+}
 
 export function contentToItems(content: string): NoteChecklistItem[] {
 	return content

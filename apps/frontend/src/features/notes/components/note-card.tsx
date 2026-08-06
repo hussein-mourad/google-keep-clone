@@ -11,6 +11,7 @@ import {
 import type { ButtonHTMLAttributes } from "react";
 import { Badge } from "#/components/ui/badge";
 import type { Note } from "../types";
+import { ChecklistProgress } from "./checklist-progress";
 
 interface NoteCardProps {
 	note: Note;
@@ -135,24 +136,7 @@ export function NoteCard({
 			{note.isChecklist &&
 				Array.isArray(note.checklist) &&
 				note.checklist.length > 0 && (
-					<div className="flex items-center gap-2 px-4 pb-2">
-						<div className="h-1.5 flex-1 overflow-hidden rounded-full bg-current/15">
-							<div
-								className="h-full rounded-full bg-current"
-								style={{
-									width: `${Math.round(
-										(note.checklist.filter((item) => item.checked).length /
-											note.checklist.length) *
-											100,
-									)}%`,
-								}}
-							/>
-						</div>
-						<span className="text-[10px] opacity-70">
-							{note.checklist.filter((item) => item.checked).length}/
-							{note.checklist.length}
-						</span>
-					</div>
+					<ChecklistProgress items={note.checklist} />
 				)}
 			{note.labels && note.labels.length > 0 && (
 				<div className="flex flex-wrap gap-1 px-4 pb-2">

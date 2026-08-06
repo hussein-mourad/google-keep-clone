@@ -11,33 +11,17 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
-import { deleteNoteImage, permanentDeleteNote, uploadNoteImage } from "../api";
-import { contentToItems, itemsToContent } from "../checklist-utils";
-import type { Note, NoteChecklistItem, NoteImage } from "../types";
+import { permanentDeleteNote, uploadNoteImage } from "../api";
+import {
+	NOTE_COLORS,
+	type NoteFormData,
+	noteSchema,
+	SAVE_DEBOUNCE_MS,
+} from "../constants";
+import type { Note, NoteChecklistItem } from "../types";
+import { toggleChecklistMode, useNoteEditor } from "../use-note-editor";
 import { ChecklistEditor } from "./checklist-editor";
 import { LabelPicker } from "./label-picker";
-
-const noteSchema = z.object({
-	title: z.string().optional(),
-	content: z.string().optional(),
-});
-
-type NoteFormData = z.infer<typeof noteSchema>;
-
-const NOTE_COLORS = [
-	{ name: "Default", value: null },
-	{ name: "Red", value: "#f28b82" },
-	{ name: "Orange", value: "#fbbc04" },
-	{ name: "Yellow", value: "#fff475" },
-	{ name: "Green", value: "#ccff90" },
-	{ name: "Teal", value: "#a7ffeb" },
-	{ name: "Blue", value: "#cbf0f8" },
-	{ name: "Purple", value: "#d7aefb" },
-	{ name: "Pink", value: "#fdcfe8" },
-];
-
-const SAVE_DEBOUNCE_MS = 600;
 
 interface TakeNoteInputProps {
 	onSubmit: (note: {
@@ -70,15 +54,25 @@ export function TakeNoteInput({
 	openRef,
 }: TakeNoteInputProps) {
 	const [expanded, setExpanded] = useState(false);
-	const [selectedLabelIds, setSelectedLabelIds] = useState<number[]>([]);
-	const [selectedColor, setSelectedColor] = useState<string | null>(null);
+	const {
+		selectedLabelIds,
+		setSelectedLabelIds,
+		selectedColor,
+		setSelectedColor,
+		isChecklist,
+		setIsChecklist,
+		checklist,
+		setChecklist,
+		images,
+		setImages,
+		showColorPicker,
+		setShowColorPicker,
+		showLabelPicker,
+		setShowLabelPicker,
+		handleRemoveImage,
+	} = useNoteEditor();
 	const [isPinned, setIsPinned] = useState(false);
-	const [showColorPicker, setShowColorPicker] = useState(false);
-	const [showLabelPicker, setShowLabelPicker] = useState(false);
 	const [uploading, setUploading] = useState(false);
-	const [images, setImages] = useState<NoteImage[]>([]);
-	const [isChecklist, setIsChecklist] = useState(false);
-	const [checklist, setChecklist] = useState<NoteChecklistItem[]>([]);
 	const noteIdRef = useRef<number | null>(null);
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const closingRef = useRef(false);
@@ -97,16 +91,14 @@ export function TakeNoteInput({
 	const watchedContent = watch("content");
 
 	function toggleChecklist() {
-		if (isChecklist) {
-			setValue("content", itemsToContent(checklist));
-			setChecklist([]);
-			setIsChecklist(false);
-		} else {
-			const { content = "" } = getValues();
-			setChecklist(contentToItems(content));
-			setValue("content", "");
-			setIsChecklist(true);
-		}
+		toggleChecklistMode({
+			isChecklist,
+			checklist,
+			setChecklist,
+			setIsChecklist,
+			getValues,
+			setValue,
+		});
 	}
 
 	useEffect(() => {
@@ -255,15 +247,6 @@ export function TakeNoteInput({
 		} finally {
 			setUploading(false);
 			if (fileInputRef.current) fileInputRef.current.value = "";
-		}
-	}
-
-	async function handleRemoveImage(imageId: number) {
-		try {
-			await deleteNoteImage(imageId);
-			setImages((prev) => prev.filter((img) => img.id !== imageId));
-		} catch {
-			toast.error("Failed to delete image");
 		}
 	}
 

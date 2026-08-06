@@ -12,31 +12,12 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
-import { deleteNoteImage, uploadNoteImage } from "../api";
-import { contentToItems, itemsToContent } from "../checklist-utils";
+import { uploadNoteImage } from "../api";
+import { NOTE_COLORS, type NoteFormData, noteSchema } from "../constants";
 import type { NoteChecklistItem, NoteImage } from "../types";
+import { toggleChecklistMode, useNoteEditor } from "../use-note-editor";
 import { ChecklistEditor } from "./checklist-editor";
 import { LabelPicker } from "./label-picker";
-
-const noteSchema = z.object({
-	title: z.string().optional(),
-	content: z.string().optional(),
-});
-
-type NoteFormData = z.infer<typeof noteSchema>;
-
-const NOTE_COLORS = [
-	{ name: "Default", value: null },
-	{ name: "Red", value: "#f28b82" },
-	{ name: "Orange", value: "#fbbc04" },
-	{ name: "Yellow", value: "#fff475" },
-	{ name: "Green", value: "#ccff90" },
-	{ name: "Teal", value: "#a7ffeb" },
-	{ name: "Blue", value: "#cbf0f8" },
-	{ name: "Purple", value: "#d7aefb" },
-	{ name: "Pink", value: "#fdcfe8" },
-];
 
 interface NoteFormProps {
 	initialTitle?: string;
@@ -76,21 +57,33 @@ export function NoteForm({
 	onClose,
 	closeRef,
 }: NoteFormProps) {
-	const [selectedLabelIds, setSelectedLabelIds] =
-		useState<number[]>(initialLabelIds);
-	const [selectedColor, setSelectedColor] = useState<string | null>(
+	const {
+		selectedLabelIds,
+		setSelectedLabelIds,
+		selectedColor,
+		setSelectedColor,
+		isChecklist,
+		setIsChecklist,
+		checklist,
+		setChecklist,
+		images,
+		setImages,
+		showColorPicker,
+		setShowColorPicker,
+		showLabelPicker,
+		setShowLabelPicker,
+		handleRemoveImage,
+	} = useNoteEditor({
+		initialLabelIds,
 		initialColor,
-	);
-	const [images, setImages] = useState<NoteImage[]>(initialImages);
-	const [isChecklist, setIsChecklist] = useState(initialIsChecklist);
-	const [checklist, setChecklist] =
-		useState<NoteChecklistItem[]>(initialChecklist);
+		initialIsChecklist,
+		initialChecklist,
+		initialImages,
+	});
 	const [uploadingImages, setUploadingImages] = useState<Set<number>>(
 		new Set(),
 	);
 	const [saving, setSaving] = useState(false);
-	const [showColorPicker, setShowColorPicker] = useState(false);
-	const [showLabelPicker, setShowLabelPicker] = useState(false);
 	const [isDragOver, setIsDragOver] = useState(false);
 	const titleRef = useRef<HTMLInputElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,16 +101,14 @@ export function NoteForm({
 	});
 
 	function toggleChecklist() {
-		if (isChecklist) {
-			setValue("content", itemsToContent(checklist));
-			setChecklist([]);
-			setIsChecklist(false);
-		} else {
-			const { content = "" } = getValues();
-			setChecklist(contentToItems(content));
-			setValue("content", "");
-			setIsChecklist(true);
-		}
+		toggleChecklistMode({
+			isChecklist,
+			checklist,
+			setChecklist,
+			setIsChecklist,
+			getValues,
+			setValue,
+		});
 	}
 
 	useEffect(() => {
@@ -149,16 +140,7 @@ export function NoteForm({
 		}
 	}
 
-	async function handleRemoveImage(imageId: number) {
-		try {
-			await deleteNoteImage(imageId);
-			setImages((prev) => prev.filter((img) => img.id !== imageId));
-		} catch {
-			toast.error("Failed to delete image");
-		}
-	}
-
-	function handleDragOver(e: React.DragEvent) {
+	async function handleDragOver(e: React.DragEvent) {
 		e.preventDefault();
 		e.stopPropagation();
 		setIsDragOver(true);
