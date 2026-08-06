@@ -35,9 +35,18 @@ interface NotesGridProps {
 	onReorderLive?: (activeId: number, overId: number) => void;
 	view?: "notes" | "archived" | "trash";
 	layout?: "grid" | "list";
+	search?: string;
 }
 
-function EmptyState({ view }: { view: string }) {
+function EmptyState({ view, search }: { view: string; search?: string }) {
+	if (search) {
+		return (
+			<div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground">
+				<p className="text-lg">No matching notes</p>
+				<p className="text-sm">No results for &quot;{search}&quot;</p>
+			</div>
+		);
+	}
 	const messages: Record<string, { title: string; subtitle: string }> = {
 		notes: {
 			title: "No notes yet",
@@ -230,10 +239,10 @@ function NoteList({
 }
 
 export function NotesGrid(props: NotesGridProps) {
-	const { notes, view = "notes" } = props;
+	const { notes, view = "notes", search } = props;
 
 	if (notes.length === 0) {
-		return <EmptyState view={view} />;
+		return <EmptyState view={view} search={search} />;
 	}
 
 	if (view !== "notes") {
