@@ -2,51 +2,165 @@ import "dotenv/config";
 import { db } from "./index";
 import { user, account } from "./schema/auth";
 import { labels, noteLabels } from "./schema/labels";
-import { notesTable } from "./schema/notes";
+import { notesTable, type NoteChecklistItem } from "./schema/notes";
 import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
 const USERS = [
-	{ name: "Alice Johnson", email: "alice@example.com", password: "password123" },
+	{
+		name: "Alice Johnson",
+		email: "alice@example.com",
+		password: "password123",
+	},
 	{ name: "Bob Smith", email: "bob@example.com", password: "password123" },
-	{ name: "Charlie Brown", email: "charlie@example.com", password: "password123" },
+	{
+		name: "Charlie Brown",
+		email: "charlie@example.com",
+		password: "password123",
+	},
 ];
 
-const COLORS = [null, null, null, "#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8", "#e8eaed"];
+const COLORS = [
+	null,
+	null,
+	null,
+	"#f28b82",
+	"#fbbc04",
+	"#fff475",
+	"#ccff90",
+	"#a7ffeb",
+	"#cbf0f8",
+	"#aecbfa",
+	"#d7aefb",
+	"#fdcfe8",
+	"#e6c9a8",
+	"#e8eaed",
+];
 
 const LABEL_NAMES = [
-	"Work", "Personal", "Ideas", "Projects", "Urgent",
-	"Reading", "Health", "Finance", "Travel", "Recipes",
-	"Shopping", "Goals", "Books", "Movies", "Music",
-	"Fitness", "Learning", "Home", "Garden", "Pets",
+	"Work",
+	"Personal",
+	"Ideas",
+	"Projects",
+	"Urgent",
+	"Reading",
+	"Health",
+	"Finance",
+	"Travel",
+	"Recipes",
+	"Shopping",
+	"Goals",
+	"Books",
+	"Movies",
+	"Music",
+	"Fitness",
+	"Learning",
+	"Home",
+	"Garden",
+	"Pets",
 ];
 
 const NOTE_TITLES = [
-	"Meeting notes", "Grocery list", "Project ideas", "Book recommendations",
-	"Workout plan", "Budget breakdown", "Travel itinerary", "Recipe collection",
-	"Morning routine", "Weekly goals", "Reading list", "Gift ideas",
-	"Home improvement", "Birthday reminders", "Movie watchlist", "Music playlist",
-	"Learning roadmap", "Career goals", "Side project", "Journal entry",
-	"Health tips", "Self-care reminders", "Meditation notes", "Yoga poses",
-	"Coffee shop reviews", "Podcast recommendations", "App ideas", "Design concepts",
-	"Writing prompts", "Photography tips", "Garden planning", "Pet care tips",
-	"Phone setup", "Computer shortcuts", "Keyboard layout", "Coding snippets",
-	"API documentation", "Database schema", "Deployment checklist", "Bug tracker",
-	"Feature requests", "User feedback", "Competitor analysis", "Market research",
-	"Social media plan", "Email templates", "Presentation notes", "Interview prep",
-	"Resume updates", "Networking contacts", "Conference notes", "Workshop ideas",
-	"Holiday plans", "Weekend activities", "Date night ideas", "Family recipes",
-	"Cleaning schedule", "Laundry tips", "Meal prep", "Pantry inventory",
-	"Insurance info", "Tax documents", "Investment tracking", "Savings goals",
-	"Credit card rewards", "Bank statements", "Utility bills", "Subscription list",
-	"Password manager", "Two-factor auth", "Security checklist", "Backup plan",
-	"Cloud storage", "File organization", "Archive system", "Trash management",
-	"Color palette", "Typography notes", "Icon set", "UI components",
-	"Accessibility tips", "Performance metrics", "Load testing", "Security audit",
-	"Code review notes", "Refactoring plan", "Tech debt log", "Architecture diagram",
-	"Database optimization", "Caching strategy", "Rate limiting", "Error handling",
-	"Logging setup", "Monitoring alerts", "Incident response", "Recovery plan",
-	"Team standup", "Sprint planning", "Retrospective", "Demo prep",
+	"Meeting notes",
+	"Grocery list",
+	"Project ideas",
+	"Book recommendations",
+	"Workout plan",
+	"Budget breakdown",
+	"Travel itinerary",
+	"Recipe collection",
+	"Morning routine",
+	"Weekly goals",
+	"Reading list",
+	"Gift ideas",
+	"Home improvement",
+	"Birthday reminders",
+	"Movie watchlist",
+	"Music playlist",
+	"Learning roadmap",
+	"Career goals",
+	"Side project",
+	"Journal entry",
+	"Health tips",
+	"Self-care reminders",
+	"Meditation notes",
+	"Yoga poses",
+	"Coffee shop reviews",
+	"Podcast recommendations",
+	"App ideas",
+	"Design concepts",
+	"Writing prompts",
+	"Photography tips",
+	"Garden planning",
+	"Pet care tips",
+	"Phone setup",
+	"Computer shortcuts",
+	"Keyboard layout",
+	"Coding snippets",
+	"API documentation",
+	"Database schema",
+	"Deployment checklist",
+	"Bug tracker",
+	"Feature requests",
+	"User feedback",
+	"Competitor analysis",
+	"Market research",
+	"Social media plan",
+	"Email templates",
+	"Presentation notes",
+	"Interview prep",
+	"Resume updates",
+	"Networking contacts",
+	"Conference notes",
+	"Workshop ideas",
+	"Holiday plans",
+	"Weekend activities",
+	"Date night ideas",
+	"Family recipes",
+	"Cleaning schedule",
+	"Laundry tips",
+	"Meal prep",
+	"Pantry inventory",
+	"Insurance info",
+	"Tax documents",
+	"Investment tracking",
+	"Savings goals",
+	"Credit card rewards",
+	"Bank statements",
+	"Utility bills",
+	"Subscription list",
+	"Password manager",
+	"Two-factor auth",
+	"Security checklist",
+	"Backup plan",
+	"Cloud storage",
+	"File organization",
+	"Archive system",
+	"Trash management",
+	"Color palette",
+	"Typography notes",
+	"Icon set",
+	"UI components",
+	"Accessibility tips",
+	"Performance metrics",
+	"Load testing",
+	"Security audit",
+	"Code review notes",
+	"Refactoring plan",
+	"Tech debt log",
+	"Architecture diagram",
+	"Database optimization",
+	"Caching strategy",
+	"Rate limiting",
+	"Error handling",
+	"Logging setup",
+	"Monitoring alerts",
+	"Incident response",
+	"Recovery plan",
+	"Team standup",
+	"Sprint planning",
+	"Retrospective",
+	"Demo prep",
 ];
 
 const NOTE_CONTENTS = [
@@ -138,9 +252,136 @@ const NOTE_CONTENTS = [
 	"Point-in-time recovery. Cross-region replication. Regular restore testing.",
 ];
 
+const CHECKLIST_TEMPLATES: Array<Array<{ text: string; checked: boolean }>> = [
+	[
+		{ text: "Milk", checked: true },
+		{ text: "Eggs", checked: true },
+		{ text: "Bread", checked: false },
+		{ text: "Coffee beans", checked: false },
+		{ text: "Tomatoes", checked: false },
+	],
+	[
+		{ text: "Review Q3 roadmap", checked: true },
+		{ text: "Prepare sprint demo", checked: true },
+		{ text: "Write unit tests", checked: false },
+		{ text: "Update API documentation", checked: false },
+	],
+	[
+		{ text: "Pack clothes", checked: true },
+		{ text: "Book hotel", checked: true },
+		{ text: "Confirm flights", checked: false },
+		{ text: "Buy travel adapter", checked: false },
+	],
+	[
+		{ text: "Fix leaky faucet", checked: true },
+		{ text: "Paint bedroom", checked: false },
+		{ text: "Install light fixtures", checked: false },
+		{ text: "Declutter garage", checked: false },
+	],
+	[
+		{ text: "Chest and triceps", checked: true },
+		{ text: "Back and biceps", checked: true },
+		{ text: "Leg day", checked: false },
+		{ text: "Shoulders", checked: false },
+	],
+	[
+		{ text: "The Pragmatic Programmer", checked: true },
+		{ text: "Clean Code", checked: true },
+		{ text: "Design Patterns", checked: false },
+		{ text: "Domain-Driven Design", checked: false },
+	],
+	[
+		{ text: "Dune Part Two", checked: true },
+		{ text: "Oppenheimer", checked: true },
+		{ text: "Poor Things", checked: false },
+		{ text: "The Holdovers", checked: false },
+	],
+	[
+		{ text: "Mom's birthday gift", checked: true },
+		{ text: "Gift card for sibling", checked: false },
+		{ text: "Wrap presents", checked: false },
+	],
+	[
+		{ text: "Deep clean kitchen", checked: true },
+		{ text: "Organize closet", checked: false },
+		{ text: "Wash windows", checked: false },
+		{ text: "Sweep garage", checked: false },
+	],
+	[
+		{ text: "Chicken meal prep", checked: true },
+		{ text: "Rice and vegetables", checked: true },
+		{ text: "Overnight oats", checked: false },
+		{ text: "Snack boxes", checked: false },
+	],
+	[
+		{ text: "Emergency fund: 6 months", checked: true },
+		{ text: "Vacation fund: $2000", checked: false },
+		{ text: "New car fund: $5000", checked: false },
+	],
+	[
+		{ text: "Morning gratitude journal", checked: true },
+		{ text: "20 min meditation", checked: true },
+		{ text: "Limit social media", checked: false },
+		{ text: "Sleep by 11pm", checked: false },
+	],
+	[
+		{ text: "Finish React advanced course", checked: true },
+		{ text: "Start learning Rust", checked: false },
+		{ text: "Practice system design", checked: false },
+	],
+	[
+		{ text: "Spring: tomatoes, basil", checked: true },
+		{ text: "Summer: peppers, squash", checked: false },
+		{ text: "Fall: kale, carrots", checked: false },
+	],
+	[
+		{ text: "Vet checkup", checked: true },
+		{ text: "Buy cat food", checked: true },
+		{ text: "Grooming appointment", checked: false },
+		{ text: "Clean fish tank", checked: false },
+	],
+	[
+		{ text: "Container health checks", checked: true },
+		{ text: "Load balancer config", checked: true },
+		{ text: "SSL certificate renewal", checked: false },
+		{ text: "Deploy to staging", checked: false },
+	],
+	[
+		{ text: "Enable 2FA everywhere", checked: true },
+		{ text: "Store backup codes", checked: true },
+		{ text: "Audit connected apps", checked: false },
+		{ text: "Update recovery contacts", checked: false },
+	],
+	[
+		{ text: "Winston logger setup", checked: true },
+		{ text: "Request correlation IDs", checked: false },
+		{ text: "Log level management", checked: false },
+	],
+	[
+		{ text: "Kubernetes pod restart policy", checked: true },
+		{ text: "Database connection pooling", checked: false },
+		{ text: "Cache invalidation", checked: false },
+	],
+	[
+		{ text: "Auto-pay rent and utilities", checked: true },
+		{ text: "Review subscriptions quarterly", checked: false },
+		{ text: "Track expenses daily", checked: false },
+	],
+];
+
 function pickRandom<T>(arr: T[], count: number): T[] {
 	const shuffled = [...arr].sort(() => Math.random() - 0.5);
 	return shuffled.slice(0, count);
+}
+
+function makeChecklist(
+	template: Array<{ text: string; checked: boolean }>,
+): NoteChecklistItem[] {
+	return template.map((item) => ({
+		id: crypto.randomUUID(),
+		text: item.text,
+		checked: item.checked,
+	}));
 }
 
 function randomDate(daysBack: number): Date {
@@ -201,6 +442,8 @@ async function seed() {
 			isArchived: boolean;
 			isDeleted: boolean;
 			deletedAt: Date | null;
+			isChecklist: boolean;
+			checklist: NoteChecklistItem[];
 			sortOrder: number;
 			createdAt: Date;
 			updatedAt: Date;
@@ -216,6 +459,8 @@ async function seed() {
 			let isDeleted = false;
 			let deletedAt: Date | null = null;
 			let color: string | null = null;
+			let isChecklist = false;
+			let checklist: NoteChecklistItem[] = [];
 
 			if (i < 10) {
 				isPinned = true;
@@ -231,6 +476,13 @@ async function seed() {
 				color = COLORS[Math.floor(Math.random() * COLORS.length)];
 			}
 
+			if (i % 4 === 0) {
+				isChecklist = true;
+				checklist = makeChecklist(
+					CHECKLIST_TEMPLATES[(i / 4) % CHECKLIST_TEMPLATES.length],
+				);
+			}
+
 			let labelCount = 0;
 			if (i >= 25 && i < 80) {
 				labelCount = Math.floor(Math.random() * 3) + 1;
@@ -238,13 +490,15 @@ async function seed() {
 
 			notesToCreate.push({
 				title: `${title} #${i + 1}`,
-				content,
+				content: isChecklist ? "" : content,
 				userId,
 				isPinned,
 				color,
 				isArchived,
 				isDeleted,
 				deletedAt,
+				isChecklist,
+				checklist,
 				sortOrder: i,
 				createdAt: randomDate(90),
 				updatedAt: randomDate(30),
@@ -279,8 +533,9 @@ async function seed() {
 		const archived = insertedNotes.filter((n) => n.isArchived).length;
 		const deleted = insertedNotes.filter((n) => n.isDeleted).length;
 		const colored = insertedNotes.filter((n) => n.color).length;
+		const checklists = insertedNotes.filter((n) => n.isChecklist).length;
 		console.log(
-			`Created ${insertedNotes.length} notes for ${u.name} (${pinned} pinned, ${archived} archived, ${deleted} deleted, ${colored} colored) + ${linkCount} label links`,
+			`Created ${insertedNotes.length} notes for ${u.name} (${pinned} pinned, ${archived} archived, ${deleted} deleted, ${colored} colored, ${checklists} with checklists) + ${linkCount} label links`,
 		);
 	}
 
