@@ -3,12 +3,13 @@ import type { Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 import cors from "cors";
+import { auth } from "@/lib/auth";
+import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import notesRouter from "@/features/notes/router";
 import labelsRouter from "@/features/labels/router";
 import env from "@/lib/env";
-import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
-import { auth } from "@/lib/auth";
 import { requireAuth } from "./features/auth/middleware";
+import { errorHandler, notFoundHandler } from "./lib/error-handler";
 
 const app = express();
 
@@ -25,25 +26,17 @@ app.use(
   }),
 );
 
-// app.use("/static", express.static(path.join(process.cwd(), "public")));
-// app.set("view engine", "ejs");
-// app.set("views", path.join(process.cwd(), "views"));
-
-// app.get("/", (_, res) => {
-//   res.render("index");
-// });
-
 app.get("/api/auth/me", async (req: Request, res: Response) => {
   const result = await auth.api.getSession({
     headers: fromNodeHeaders(req.headers),
   });
   if (!result) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ error: "Unauthorized" });
   }
   return res.json(result.user);
 });
 
-app.get("/api/health", (_, res) => {
+app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
@@ -51,5 +44,8 @@ app.all("/api/auth/{*any}", toNodeHandler(auth));
 app.use(requireAuth);
 app.use("/api/notes", notesRouter);
 app.use("/api/labels", labelsRouter);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;

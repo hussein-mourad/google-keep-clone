@@ -5,6 +5,7 @@ import cors from "cors";
 import notesRouter from "@/features/notes/router";
 import labelsRouter from "@/features/labels/router";
 import env from "@/lib/env";
+import { errorHandler, notFoundHandler } from "@/lib/error-handler";
 
 export const TEST_USER_ID = "test-user-id-00000000-0000-0000-0000-000000000000";
 
@@ -35,6 +36,9 @@ export function createTestApp() {
 
   app.use("/api/notes", notesRouter);
   app.use("/api/labels", labelsRouter);
+
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
   return app;
 }

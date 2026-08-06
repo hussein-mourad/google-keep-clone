@@ -64,6 +64,13 @@
       "when": 1785947303129,
       "tag": "0008_broad_stone_men",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785998184578,
+      "tag": "0009_easy_otto_octavius",
+      "breakpoints": true
     }
   ]
 }

@@ -1,16 +1,20 @@
-import { integer, pgTable, primaryKey, serial, text, varchar } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, primaryKey, serial, text, varchar } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { notesTable } from "./notes";
 import { withTimestamps } from "./timestamps";
 
-export const labels = pgTable("labels", {
-  id: serial().primaryKey(),
-  name: varchar({ length: 255 }).notNull(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  ...withTimestamps,
-});
+export const labels = pgTable(
+  "labels",
+  {
+    id: serial().primaryKey(),
+    name: varchar({ length: 255 }).notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    ...withTimestamps,
+  },
+  (table) => [index("labels_user_id_idx").on(table.userId)],
+);
 
 export type Label = typeof labels.$inferSelect;
 export type NewLabel = typeof labels.$inferInsert;
@@ -25,7 +29,10 @@ export const noteLabels = pgTable(
       .notNull()
       .references(() => labels.id, { onDelete: "cascade" }),
   },
-  (t) => [primaryKey({ columns: [t.noteId, t.labelId] })],
+  (t) => [
+    primaryKey({ columns: [t.noteId, t.labelId] }),
+    index("note_labels_label_id_idx").on(t.labelId),
+  ],
 );
 
 export type NoteLabel = typeof noteLabels.$inferSelect;

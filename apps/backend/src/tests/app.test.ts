@@ -257,6 +257,33 @@ describe("notes API", () => {
     assert.equal(res.body[0].title, "Alpha Note");
   });
 
+  it("POST /api/notes rejects invalid body with 400 details", async () => {
+    const res = await request(app)
+      .post("/api/notes")
+      .send({ title: 123, color: "not-a-color" })
+      .expect(400);
+
+    assert.equal(res.body.error, "Validation failed");
+    assert.ok(Array.isArray(res.body.details));
+    assert.ok(res.body.details.length > 0);
+  });
+
+  it("POST /api/notes/:id/images returns 503 when storage is unconfigured", async () => {
+    const createRes = await request(app)
+      .post("/api/notes")
+      .send({ title: "Image Note", content: "Content" });
+
+    const res = await request(app)
+      .post(`/api/notes/${createRes.body.id}/images`)
+      .attach("image", Buffer.from("fake-image-bytes"), "test.png")
+      .expect(503);
+
+    assert.deepEqual(res.body, {
+      error: "Image storage not configured",
+      code: "STORAGE_UNAVAILABLE",
+    });
+  });
+
   it("GET /api/notes?archived=true returns archived notes", async () => {
     const createRes = await request(app)
       .post("/api/notes")
