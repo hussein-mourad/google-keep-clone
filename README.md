@@ -27,6 +27,7 @@
 | Layer       | Technology                                  |
 | ----------- | ------------------------------------------- |
 | Runtime     | [Bun](https://bun.sh)                       |
+| Monorepo    | [Turborepo](https://turbo.build)            |
 | Frontend    | React 19, TypeScript, Vite, TanStack Router |
 | Styling     | Tailwind CSS v4, shadcn/ui                  |
 | Forms       | react-hook-form, Zod                        |
@@ -91,10 +92,22 @@ bun run dev:frontend  # http://localhost:3000
 
 ## Project Structure
 
+Bun workspace monorepo orchestrated with Turborepo:
+
 ```
 apps/
   frontend/    React 19 + TanStack Router + Vite
   backend/     Express 5 + Drizzle ORM + better-auth
+```
+
+Run tasks across the repo from the root — Turborepo handles caching and parallel execution:
+
+```bash
+bun run dev         # both servers concurrently
+bun run typecheck   # tsc --noEmit in both apps
+bun run test        # vitest in both apps
+bun run build       # build apps
+bun run check       # Biome (frontend)
 ```
 
 ## Testing

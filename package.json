@@ -1,21 +1,28 @@
 {
   "name": "google-keep-clone",
   "version": "1.0.0",
-  "private": true,
   "workspaces": [
     "apps/*"
   ],
+  "packageManager": "bun@1.3.0",
+  "private": true,
   "scripts": {
-    "dev": "bun run --filter './apps/*' dev",
-    "build": "bun run --filter './apps/*' build",
-    "test": "bun run --filter backend test && bun run --filter frontend test",
-    "test:e2e": "bun run --filter frontend test:e2e",
-    "clean": "rm -rf 'apps/*/node_modules' 'packages/*/dist' 'packages/*/.bun'",
-    "dev:backend": "bun run --filter backend dev",
-    "db:studio": "bun run --filter backend db:studio",
-    "dev:frontend": "bun run --filter frontend dev"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "test:e2e": "turbo run test:e2e",
+    "check": "turbo run check",
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "clean": "turbo clean && rm -rf 'apps/*/node_modules' 'packages/*/dist' 'packages/*/.bun'",
+    "dev:backend": "turbo run dev --filter=backend",
+    "db:studio": "turbo run db:studio --filter=backend",
+    "dev:frontend": "turbo run dev --filter=frontend"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "turbo": "^2.10.8"
   }
 }

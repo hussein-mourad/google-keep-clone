@@ -2,7 +2,7 @@
 
 ## Project Structure
 
-Bun workspace monorepo (`apps/*`):
+Bun workspace monorepo orchestrated with Turborepo (`apps/*`):
 
 ```
 apps/frontend/   Vite + React 19 + TanStack Router (file-based routing)
@@ -27,11 +27,16 @@ Start backend before frontend (Vite proxies via `VITE_BACKEND_URL`).
 
 | Command | Dir | What |
 |---|---|---|
-| `bun run dev` | root | Runs both frontend + backend concurrently |
+| `bun run dev` | root | Runs both frontend + backend concurrently (Turbo) |
 | `bun run dev:backend` | root | Backend only (port 8000) |
 | `bun run dev:frontend` | root | Frontend only (port 3000) |
+| `bun run typecheck` | root | `tsc --noEmit` in both apps (Turbo) |
+| `bun run check` | root | Biome check in frontend (Turbo) |
+| `bun run build` | root | Build all apps (Turbo) |
+| `bun run test` | root | Vitest in both apps (Turbo) |
 | `bun run db:generate` | `apps/backend/` | Generate Drizzle migrations |
 | `bun run db:push` | `apps/backend/` | Push schema to DB (dev shortcut) |
+| `bun run db:studio` | root | Drizzle Studio (Turbo) |
 | `bun run test` | `apps/frontend/` | Vitest |
 | `bun run test` | `apps/backend/` | Vitest |
 | `bun run test:e2e` | root | Playwright e2e (starts backend + frontend automatically) |
@@ -78,3 +83,4 @@ Start backend before frontend (Vite proxies via `VITE_BACKEND_URL`).
 - Frontend uses `tsr generate` to regenerate `routeTree.gen.ts` — run this after adding/changing route files
 - Biome (not ESLint/Prettier) in frontend
 - Bun runtime on backend — not Node.js (don't use Node-specific APIs without checking Bun compat)
+- Task orchestration via Turborepo (`turbo.json`); root scripts delegate to `turbo run`. `db:push`/`db:migrate`/`db:seed` are cache-disabled (they mutate the DB)
